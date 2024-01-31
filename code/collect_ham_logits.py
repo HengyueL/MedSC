@@ -25,7 +25,7 @@ sys.path.append(dir_path)
 from utils.utils import set_seed
 
 
-HAM_CSV_DIR = "/home/jusun/shared/HAM/HAM10000.csv"
+HAM_CSV_DIR = "/panfs/jay/groups/15/jusun/shared/HAM/HAM10000.csv"
 
 
 def stratfy_sampling(labelList, ratio, return_mask=False):
@@ -110,6 +110,7 @@ lesion_to_num = {'nv': 0,
         'vasc': 5,
         'df': 6}
 
+
 def get_ham_loaders(bs=128):
     df = pd.read_csv(HAM_CSV_DIR)
     df.dx = df.dx.map(lambda x: lesion_to_num[x])
@@ -152,7 +153,7 @@ def collect_logits(model, data_loader, save_res_root, device):
     labels_log = []
     with torch.no_grad():
         for input, target in tqdm(data_loader):
-            input, target = x.to(device), y.to(device)
+            input, target = input.to(device), target.to(device)
 
             # compute output
             logit_output = model(input)
@@ -174,11 +175,12 @@ def collect_logits(model, data_loader, save_res_root, device):
 
 def main(args):
     # === Create Exp Save Root ===
-    log_root = os.path.join("..", "raw_data_collection", "HAM")
+    log_root = os.path.join(".", "raw_data_collection", "HAM")
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) ## important! For reproduction
-    device = torch.device("cuda")
+    # device = torch.device("cuda")
+    device = torch.device("cpu")
     ## prepare pretrained model
     num_classes = 7
     model = models.resnet50()
@@ -190,12 +192,23 @@ def main(args):
             ]
         )
     )
-    model.load_state_dict(torch.load("../models/HAM/best.pt"))
+    model.load_state_dict(torch.load(args.ckpt_dir))
     model.to(device)
     model.eval()
 
     # === Collect Model fc weights and bias ===
-    fc_layer = model["fc"]
+    last_layer = model[-1]
+    print()
+    weights = last_layer.weight.data.clone().cpu().numpy()
+    bias = last_layer.bias.data.clone().cpu().numpy()
+    save_weight_name = os.path.join(
+        log_root, "last_layer_weights.npy"
+    )
+    save_bias_name = os.path.join(
+        log_root, "last_layer_bias.npy"
+    )
+    np.save(save_weight_name, weights)
+    np.save(save_bias_name, bias)
     print()
 
     dss, stats = get_ham_loaders()
@@ -224,23 +237,10 @@ if __name__ == "__main__":
         help="Random seed."
     )
     parser.add_argument(
-        "--ckpt_dir", "ckpt_dir", type=str,
-        default="/home/jusun/shared/For_HY/SC_eval/models/HAM/best.pt/"
+        "--ckpt_dir", dest="ckpt_dir", type=str,
+        default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval/models/HAM/best.pt"
     )
     args = parser.parse_args()
     main(args)
     print("All task completed!")
-    
-
-    preds, labels = [], []
-    for x, y in tqdm(dss['test']):
-        with torch.no_grad():
-            x, y = x.to(device), y.to(device)
-            tmp_pred = model(x)
-            preds.append(tmp_pred)
-            labels.append(y)
-    preds, labels = torch.concat(preds), torch.concat(labels)
-    metric_dict = multi_clf_metrics(preds, labels, reduce=True)
-    print(metric_dict)
-        
         
