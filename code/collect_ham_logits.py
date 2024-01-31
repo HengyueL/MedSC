@@ -173,16 +173,15 @@ def collect_logits(model, data_loader, save_res_root, device):
     np.save(save_labels_name, labels_log)
 
 
-
 def main(args):
     # === Create Exp Save Root ===
     log_root = os.path.join(".", "raw_data_collection", "HAM")
     os.makedirs(log_root, exist_ok=True)
 
-    set_seed(args.seed) ## important! For reproduction
-    # device = torch.device("cuda")
-    device = torch.device("cpu")
-    ## prepare pretrained model
+    set_seed(args.seed) # important! For reproduction
+    device = torch.device("cuda")
+    
+    # Prepare Pretrained Model
     num_classes = 7
     model = models.resnet50()
     backbone=nn.Sequential(*list(model.children())[:-1], nn.Flatten())
