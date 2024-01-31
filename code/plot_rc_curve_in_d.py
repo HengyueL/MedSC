@@ -51,8 +51,10 @@ def main(args):
     # Compute recalls and balanced accuracy
     recall_dict = compute_recalls(in_d_logits, in_d_labels)
     print("Check recalls: ", recall_dict)
+    
 
 if __name__ == "__main__":
+
     clear_terminal_output()
     print("This script takes into in-D logits and labels and process the RC curve.")
     parser = argparse.ArgumentParser()
