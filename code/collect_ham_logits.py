@@ -131,9 +131,9 @@ def get_ham_loaders(bs=128):
     test_ds = HAM_224_dataset(df_test.image_id, df_test.dx, mode='val')
     dss = {'train': train_ds, 'val': val_ds, 'test': test_ds}
 
-    trainloader = DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=4, pin_memory=True)
-    valloader = DataLoader(val_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=True)
-    testloader = DataLoader(test_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=True)
+    trainloader = DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=4, pin_memory=False)
+    valloader = DataLoader(val_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=False)
+    testloader = DataLoader(test_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=False)
     
     dls = {'train': trainloader, 'val': valloader, 'test': testloader} 
 
@@ -175,7 +175,7 @@ def collect_logits(model, data_loader, save_res_root, device):
 
 def main(args):
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "HAM")
+    log_root = os.path.join(".", "raw_data_collection", "HAM-res50")
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction
