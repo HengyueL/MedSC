@@ -9,6 +9,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 import pandas as pd
 from collections import Counter
 from PIL import Image
+import torch.nn.functional as F
 
 from albumentations import ( Compose, OneOf, Normalize, Resize, RandomResizedCrop, RandomCrop, HorizontalFlip, VerticalFlip, 
     RandomBrightness, RandomContrast, RandomBrightnessContrast, Rotate, ShiftScaleRotate, Cutout, IAAAdditiveGaussianNoise, Transpose, ToGray )
