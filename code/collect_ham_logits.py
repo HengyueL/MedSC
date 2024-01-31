@@ -216,16 +216,19 @@ def main(args):
     # === Collect Training Logits === 
     train_loader = dss["train"]
     save_dir = os.path.join(log_root, "train_set")
+    os.makedirs(save_dir, exist_ok=True)
     collect_logits(model, train_loader, save_dir, device)
 
     # === Collect Training Logits === 
     val_loader = dss["val"]
     save_dir = os.path.join(log_root, "val_set")
+    os.makedirs(save_dir, exist_ok=True)
     collect_logits(model, val_loader, save_dir, device)
 
     # === Collect Training Logits === 
     test_loader = dss["test"]
     save_dir = os.path.join(log_root, "test_set")
+    os.makedirs(save_dir, exist_ok=True)
     collect_logits(model, test_loader, save_dir, device)
 
 
