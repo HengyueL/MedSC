@@ -1,2 +1,3 @@
 code/utils/__pycache__/
 ./raw_data_collection/
+./process_rc_data/
