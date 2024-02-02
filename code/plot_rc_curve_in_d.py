@@ -6,7 +6,8 @@ import sys, os
 dir_path = os.path.abspath(".")
 sys.path.append(dir_path)
 from utils.utils import clear_terminal_output
-from utils.rc_curve_utils import compute_recalls
+from utils.rc_curve_utils import compute_recalls, calculate_score_acc, calculate_score_residual, \
+    plot_rc_curve
 
 
 # GLOBAL VARs
@@ -39,6 +40,7 @@ def main(args):
 
     # === Root dir to save processed 
     save_root_dir = os.path.join("process_rc_data", exp_dir, "in-d")
+    os.makedirs(save_root_dir, exist_ok=True)
 
     # ===  Load In-D collected data ===
     in_d_logits, in_d_labels, fc_weights, fc_bias = read_data(read_root_dir, split="test_set", load_classifier_weight=True)
@@ -49,9 +51,23 @@ def main(args):
     print("Acc - %.04f" % acc)
     
     # Compute recalls and balanced accuracy
-    recall_dict = compute_recalls(in_d_logits, in_d_labels)
-    print("Check recalls: ", recall_dict)
+    # recall_dict = compute_recalls(in_d_logits, in_d_labels)
+    # print("Check recalls: ", recall_dict)
     
+    # # === Check RC and acc-coverage curve ===
+    acc_scores, acc_list, acc_method_list = calculate_score_acc(in_d_logits, in_d_labels)
+    acc_fig_name = os.path.join(save_root_dir, "acc-coverage-curve.png")
+    acc_coverage_dict, acc_dict = plot_rc_curve(
+        acc_scores, acc_list, acc_fig_name, acc_method_list, PLOT_SYMBOL_DICT, curve_name="acc-coverage"
+    )
+
+    # === Check RC and acc-coverage curve ===
+    risk_scores, risk_list, risk_method_list = calculate_score_residual(in_d_logits, in_d_labels)
+    risk_fig_name = os.path.join(save_root_dir, "risk-coverage-curve.png")
+    risk_coverage_dict, risk_dict = plot_rc_curve(
+        risk_scores, risk_list, risk_fig_name, risk_method_list, PLOT_SYMBOL_DICT, curve_name="risk-coverage"
+    )
+
 
 if __name__ == "__main__":
 
