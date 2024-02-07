@@ -198,7 +198,6 @@ def main(args):
 
     # === Collect Model fc weights and bias ===
     last_layer = model[-1]
-    print()
     weights = last_layer.weight.data.clone().cpu().numpy()
     bias = last_layer.bias.data.clone().cpu().numpy()
     save_weight_name = os.path.join(
@@ -209,7 +208,6 @@ def main(args):
     )
     np.save(save_weight_name, weights)
     np.save(save_bias_name, bias)
-    print()
 
     dss, stats = get_ham_loaders()
     
