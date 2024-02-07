@@ -2,6 +2,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score, average_pre
 import numpy as np
 import torch
 import torch.nn as nn
+from collections import Counter
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
@@ -272,3 +273,84 @@ def plot_rc_curve(total_scores_dict, risk_acc_dict, fig_name, method_name_list, 
     plt.savefig(save_path)
     plt.close(fig)
     return coverage_dict, y_dict
+
+
+# === calculate score and cls index === To plot which samples are rejected first ===
+def calculate_score_sample_cls(
+        logits, labels,
+        weights=None, bias=None  # reserved options in case we need geo margin
+    ):
+    method_name_list = []
+    scores_dict = {}
+
+    # === Scores used in previous version ===
+    logits_tensor = torch.from_numpy(logits).to(dtype=torch.float)
+    max_logit_pred = np.argmax(logits, axis=1)
+
+
+    # === MaxSR 
+    sr = torch.softmax(logits_tensor, dim=1)
+    max_sr_scores = torch.amax(sr, dim=1).numpy()
+    method_name = "max_sr"
+    method_name_list.append(method_name)
+    scores_dict[method_name] = max_sr_scores
+
+
+    # === OURS ====
+    # raw margin
+    values, _ = torch.topk(logits_tensor, 2, axis=1)
+    raw_margin_scores = (values[:, 0] - values[:, 1]).cpu().numpy()
+    method_name = "conf_margin"
+    method_name_list.append(method_name)
+    scores_dict[method_name] = raw_margin_scores
+
+    return scores_dict, method_name_list, labels.tolist()
+
+ 
+def sample_percentage_coverage_curve(scores_list, n_samples_dict, labels_list):
+    """
+        Compute the (relative) samples remained when coverage decreases.
+    """
+    # return result
+    coverage_dict = {}
+    sample_percentage_dict = {}
+
+    # counter
+    samples_remained = {}
+    n_samples = len(labels_list)
+    n_samples_remained = n_samples
+
+    for key in n_samples_dict:
+        samples_remained[key] = n_samples_dict[key]
+        coverage_dict[key] = [1]
+        sample_percentage_dict[key] = [1]
+        
+    idx_sorted = np.argsort(scores_list)
+    for i in range(0, len(idx_sorted)-1):
+        poped_idx = idx_sorted[i]
+        reject_sample_label = labels_list[poped_idx]
+
+        samples_remained[reject_sample_label] -= 1
+        n_samples_remained -= 1
+        
+        for key in n_samples_dict:
+            coverage = n_samples_remained / n_samples
+            ratio = samples_remained[key] / n_samples_dict[key]
+
+            coverage_dict[key].append(coverage)
+            sample_percentage_dict[key].append(ratio)
+    return coverage_dict, sample_percentage_dict
+    
+
+def plot_sample_percentage_coverage_curve(scores_dict, method_name_list, labels_list, plot_symbol_dict, fig_name):
+    n_samples_dict = dict(Counter(labels_list))
+
+    for method in method_name_list:
+        scores_list = scores_dict[method]
+        coverage_dict, sample_percentage_dict = sample_percentage_coverage_curve(
+            scores_list, n_samples_dict, labels_list
+        )  # Per cls coverage-percentage curve
+
+
+
+
