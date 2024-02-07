@@ -7,7 +7,8 @@ dir_path = os.path.abspath(".")
 sys.path.append(dir_path)
 from utils.utils import clear_terminal_output
 from utils.rc_curve_utils import compute_recalls, calculate_score_acc, calculate_score_residual, \
-    plot_rc_curve
+    plot_rc_curve, plot_sample_percentage_coverage_curve, calculate_score_sample_cls, \
+    plot_recall_coverage_curve
 
 
 # GLOBAL VARs
@@ -54,19 +55,32 @@ def main(args):
     # recall_dict = compute_recalls(in_d_logits, in_d_labels)
     # print("Check recalls: ", recall_dict)
     
+    save_rc_curve_root = os.path.join(save_root_dir, "rc_curves")
+    os.makedirs(save_rc_curve_root, exist_ok=True)
     # # === Check RC and acc-coverage curve ===
     acc_scores, acc_list, acc_method_list = calculate_score_acc(in_d_logits, in_d_labels)
-    acc_fig_name = os.path.join(save_root_dir, "acc-coverage-curve.png")
+    acc_fig_name = os.path.join(save_rc_curve_root, "acc-coverage-curve.png")
     acc_coverage_dict, acc_dict = plot_rc_curve(
         acc_scores, acc_list, acc_fig_name, acc_method_list, PLOT_SYMBOL_DICT, curve_name="acc-coverage"
     )
 
     # === Check RC and acc-coverage curve ===
     risk_scores, risk_list, risk_method_list = calculate_score_residual(in_d_logits, in_d_labels)
-    risk_fig_name = os.path.join(save_root_dir, "risk-coverage-curve.png")
+    risk_fig_name = os.path.join(save_rc_curve_root, "risk-coverage-curve.png")
     risk_coverage_dict, risk_dict = plot_rc_curve(
         risk_scores, risk_list, risk_fig_name, risk_method_list, PLOT_SYMBOL_DICT, curve_name="risk-coverage"
     )
+
+    # === Plot sample rejection dynamics ===
+    scores_dict, method_names, labels_list = calculate_score_sample_cls(in_d_logits, in_d_labels)
+    fig_path = os.path.join(save_root_dir, "class-wise-sample-rejection")
+    os.makedirs(fig_path, exist_ok=True)
+    plot_sample_percentage_coverage_curve(scores_dict, method_names, labels_list, fig_path)
+
+    # === Plot recall-coverage curve
+    fig_path = os.path.join(save_root_dir, "recall-coverage")
+    os.makedirs(fig_path, exist_ok=True)
+    plot_recall_coverage_curve(in_d_logits, in_d_labels, fig_path)
 
 
 if __name__ == "__main__":
