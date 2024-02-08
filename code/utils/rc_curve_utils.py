@@ -11,6 +11,7 @@ import matplotlib.colors as mcolors
 import seaborn as sns
 sns.set()
 COLORS = list(mcolors.TABLEAU_COLORS)
+N_COLORS = len(COLORS)
 
 
 def compute_recalls(pred_logits, labels):
@@ -367,14 +368,14 @@ def plot_sample_percentage_coverage_curve(scores_dict, method_name_list, labels_
             l1 = ax[0].plot(
                 x_plot, y_plot,
                 label="Cls - %s" % key, lw=line_width, alpha=alpha,
-                color=COLORS[curve_idx], marker=None, markersize=markersize
+                color=COLORS[curve_idx % N_COLORS], marker=None, markersize=markersize
             )
 
             x_plot, y_plot = coverage_dict[key], sample_abs_number_dict[key]
             _ = ax[1].plot(
                 x_plot, y_plot,
                 label="Cls - %s" % key, lw=line_width, alpha=alpha,
-                color=COLORS[curve_idx], marker=None, markersize=markersize
+                color=COLORS[curve_idx % N_COLORS], marker=None, markersize=markersize
             )
         
         ax[0].legend(
@@ -453,14 +454,14 @@ def plot_recall_coverage_curve(logits, labels, fig_path):
                 l1 = ax[0].plot(
                     x_plot, y_plot,
                     label=legend_str, lw=line_width, alpha=alpha,
-                    color=COLORS[curve_idx], marker=None, markersize=markersize
+                    color=COLORS[curve_idx % N_COLORS], marker=None, markersize=markersize
                 )
             else:
                 legend_str = r"Balance Acc."
                 l1 = ax[1].plot(
                     x_plot, y_plot,
                     label=legend_str, lw=line_width, alpha=alpha,
-                    color=COLORS[curve_idx], marker=None, markersize=markersize
+                    color=COLORS[curve_idx % N_COLORS], marker=None, markersize=markersize
                 )
 
         ax[0].legend(
