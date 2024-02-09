@@ -154,8 +154,10 @@ def collect_logits(model, data_loader, save_res_root, device):
 
 
 def main(args):
+    ckpt_name = "NIH-" + args.ckpt_file.split("_")[0]
+
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "NIH-res50")
+    log_root = os.path.join(".", "raw_data_collection", ckpt_name)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction
@@ -165,7 +167,8 @@ def main(args):
     num_classes= 7   
     model = models.resnet50()
     model.fc = nn.Linear(model.fc.in_features, 20)
-    weights = torch.load(args.ckpt_dir)['weights']
+    file_path = os.path.join(args.ckpt_dir, args.ckpt_file)
+    weights = torch.load(file_path)['weights']
     model.load_state_dict(weights)
     model.to(device)
     model.eval()
@@ -213,8 +216,11 @@ if __name__ == "__main__":
         help="Random seed."
     )
     parser.add_argument(
-        "--ckpt_dir", dest="ckpt_dir", type=str,
-        default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval/models/NIH/decoupling-cRT_nih.pt"
+        "--ckpt_root_dir", dest="ckpt_dir", type=str,
+        default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval/models/NIH/"
+    )
+    parser.add_argument(
+        "--ckpt_file", dest="ckpt_file", type=str, default="decoupling-cRT_nih.pt"
     )
     args = parser.parse_args()
     main(args)
