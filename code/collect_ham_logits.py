@@ -177,7 +177,7 @@ def main(args):
     name_str = args.ckpt_dir.split("/")[-2]
 
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "HAM-%s" % name_str)
+    log_root = os.path.join(".", "raw_data_collection", "HAM", "%s" % name_str)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction
