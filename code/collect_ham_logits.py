@@ -116,13 +116,13 @@ def get_ham_loaders(bs=128):
     df = pd.read_csv(HAM_CSV_DIR)
     df.dx = df.dx.map(lambda x: lesion_to_num[x])
     weights = list(dict(sorted(Counter(df.dx).items(), key=lambda x: x[0])).values())
-    idx_train, idx_tmp = stratfy_sampling(df.dx, ratio=0.2)
-    df_tmp = df.iloc[idx_tmp, :].reset_index(drop=True)
-    df_train = df.iloc[idx_train].reset_index(drop=True)
+    idx_train, idx_test = stratfy_sampling(df.dx, ratio=0.2)
+    df_test = df.iloc[idx_test].reset_index(drop=True)
+    df_tmp = df.iloc[idx_train].reset_index(drop=True)
 
-    idx_val, idx_test = stratfy_sampling(df_tmp.dx, ratio=0.5)
+    idx_train, idx_val = stratfy_sampling(df_tmp.dx, ratio=0.2)
     df_val = df_tmp.iloc[idx_val].reset_index(drop=True)
-    df_test = df_tmp.iloc[idx_test].reset_index(drop=True)
+    df_train = df_tmp.iloc[idx_train].reset_index(drop=True)
     print(df.shape, df_train.shape, df_test.shape, df_val.shape)
 
 
@@ -174,8 +174,10 @@ def collect_logits(model, data_loader, save_res_root, device):
 
 
 def main(args):
+    name_str = args.ckpt_dir.split("/")[-2]
+
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "HAM-res50")
+    log_root = os.path.join(".", "raw_data_collection", "HAM-%s" % name_str)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction
@@ -239,7 +241,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--ckpt_dir", dest="ckpt_dir", type=str,
-        default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval/models/HAM/best.pt"
+        default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval/models/HAM/ce/best.pt"
     )
     args = parser.parse_args()
     main(args)
