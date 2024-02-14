@@ -18,16 +18,6 @@ sys.path.append(dir_path)
 from utils.utils import set_seed
 
 
-def parse_df(df, one_hot=False):
-    path = "/scratch.global/peng0347/nih-crx-lt/images/images/" + df.id
-    
-    labels = df.iloc[:, 1:21].to_numpy()
-    
-    if not one_hot:
-        labels = labels @ np.asarray(range(0, 20))
-    return path, labels
-
-
 class NIH_224_dataset_fromdf(Dataset):
     def __init__(self, mode: str, split: str, size: int) -> None:
         """init function
@@ -85,6 +75,16 @@ class NIH_224_dataset_fromdf(Dataset):
         y = np.array(self.labels[idx])
 
         return x.float(), torch.from_numpy(y).long()
+
+
+def parse_df(df, one_hot=False):
+    path = "/scratch.global/peng0347/nih-crx-lt/images/images/" + df.id
+    
+    labels = df.iloc[:, 1:21].to_numpy()
+    
+    if not one_hot:
+        labels = labels @ np.asarray(range(0, 20))
+    return path, labels
 
 
 def get_NIH_TL_dataloader(bs=256, size=224):
@@ -154,10 +154,10 @@ def collect_logits(model, data_loader, save_res_root, device):
 
 
 def main(args):
-    ckpt_name = "NIH-" + args.ckpt_file.split("_")[0]
+    ckpt_name = args.ckpt_file.split("_")[0]
 
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", ckpt_name)
+    log_root = os.path.join(".", "raw_data_collection", "NIH", ckpt_name)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction
