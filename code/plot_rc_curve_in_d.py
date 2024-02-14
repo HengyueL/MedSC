@@ -95,7 +95,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--exp_dir", dest="exp_dir", type=str,
-        default="HAM\\wce",
+        default="NIH\\softmax",
         help="Experiment subfolder where collected data are located."
     )
     args = parser.parse_args()
