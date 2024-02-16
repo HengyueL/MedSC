@@ -2,6 +2,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score, average_pre
 import numpy as np
 import torch
 import torch.nn as nn
+import os
 from collections import Counter
 
 import matplotlib.pyplot as plt
@@ -10,6 +11,7 @@ import matplotlib.colors as mcolors
 import seaborn as sns
 sns.set()
 COLORS = list(mcolors.TABLEAU_COLORS)
+N_COLORS = len(COLORS)
 
 
 def compute_recalls(pred_logits, labels):
@@ -314,6 +316,7 @@ def sample_percentage_coverage_curve(scores_list, n_samples_dict, labels_list):
     # return result
     coverage_dict = {}
     sample_percentage_dict = {}
+    sample_abs_number_dict = {}
 
     # counter
     samples_remained = {}
@@ -324,6 +327,7 @@ def sample_percentage_coverage_curve(scores_list, n_samples_dict, labels_list):
         samples_remained[key] = n_samples_dict[key]
         coverage_dict[key] = [1]
         sample_percentage_dict[key] = [1]
+        sample_abs_number_dict[key] = [n_samples_dict[key]]
         
     idx_sorted = np.argsort(scores_list)
     for i in range(0, len(idx_sorted)-1):
@@ -339,19 +343,148 @@ def sample_percentage_coverage_curve(scores_list, n_samples_dict, labels_list):
 
             coverage_dict[key].append(coverage)
             sample_percentage_dict[key].append(ratio)
-    return coverage_dict, sample_percentage_dict
+            sample_abs_number_dict[key].append(samples_remained[key])
+    return coverage_dict, sample_percentage_dict, sample_abs_number_dict
     
 
-def plot_sample_percentage_coverage_curve(scores_dict, method_name_list, labels_list, plot_symbol_dict, fig_name):
+def plot_sample_percentage_coverage_curve(scores_dict, method_name_list, labels_list, fig_path):
     n_samples_dict = dict(Counter(labels_list))
 
     for method in method_name_list:
         scores_list = scores_dict[method]
-        coverage_dict, sample_percentage_dict = sample_percentage_coverage_curve(
+        coverage_dict, sample_percentage_dict, sample_abs_number_dict = sample_percentage_coverage_curve(
             scores_list, n_samples_dict, labels_list
         )  # Per cls coverage-percentage curve
 
         # === Plot the curve ===
+        save_path = os.path.join(fig_path, "sample_rejections_%s.png" % method)
+        line_width = 2
+        markersize = 1
+        alpha = 0.5
+        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
+        font_size = 19
+        tick_size = 20
+        for curve_idx, key in enumerate(coverage_dict.keys()):
+            x_plot, y_plot = coverage_dict[key], sample_percentage_dict[key]
+            l1 = ax[0].plot(
+                x_plot, y_plot,
+                label="Cls - %s" % key, lw=line_width, alpha=alpha,
+                color=COLORS[curve_idx % N_COLORS], marker=None, markersize=markersize
+            )
+
+            x_plot, y_plot = coverage_dict[key], sample_abs_number_dict[key]
+            _ = ax[1].plot(
+                x_plot, y_plot,
+                label="Cls - %s" % key, lw=line_width, alpha=alpha,
+                color=COLORS[curve_idx % N_COLORS], marker=None, markersize=markersize
+            )
+        
+        ax[0].legend(
+            loc='lower left', bbox_to_anchor=(-0.25, 1, 1.25, 0.2), mode="expand", 
+            borderaxespad=0,
+            ncol=3, fancybox=True, shadow=False, fontsize=font_size, framealpha=0.3
+        )
+        ax[0].tick_params(axis='x', which='major', colors='black', labelsize=tick_size)
+        ax[0].tick_params(axis='y', which='major', colors='black', labelsize=tick_size)
+        ax[0].set_ylabel(r"Samples remained (%)", fontsize=font_size)
+        ax[0].set_xlabel(r"Coverage", fontsize=font_size)
+
+        ax[1].legend(
+            loc='lower left', bbox_to_anchor=(-0.25, 1, 1.25, 0.2), mode="expand", 
+            borderaxespad=0,
+            ncol=3, fancybox=True, shadow=False, fontsize=font_size, framealpha=0.3
+        )
+        ax[1].tick_params(axis='x', which='major', colors='black', labelsize=tick_size)
+        ax[1].tick_params(axis='y', which='major', colors='black', labelsize=tick_size)
+        ax[1].set_ylabel(r"Samples remained (abs number)", fontsize=font_size)
+        ax[1].set_xlabel(r"Coverage", fontsize=font_size)
+
+        fig.tight_layout()
+        plt.savefig(save_path)
+        plt.close(fig)
 
 
+def recall_coverage_curve(scores_list, logits, labels):
+    idx_sorted = np.argsort(scores_list)
+    n_samples = len(idx_sorted)
+    # === For result saving ===
+    recall_dict = {}
+    coverage_list = [1]
 
+    init_recalls = compute_recalls(logits, labels)
+    for key in init_recalls.keys():
+        recall_dict[key] = [init_recalls[key]]
+
+    for i in range(0, len(idx_sorted)-1):
+        indices = idx_sorted[i:]
+        logits_remained = logits[indices, :]
+        labels_remained = labels[indices]
+        recalls = compute_recalls(logits_remained, labels_remained)
+        # log result
+        coverage_list.append(len(labels_remained)/n_samples)
+        for key in init_recalls.keys():
+            recall_dict[key].append(recalls[key])
+
+    return coverage_list, recall_dict
+
+
+def plot_recall_coverage_curve(logits, labels, fig_path):
+    scores_dict, _, method_names = calculate_score_acc(logits, labels)
+
+    for method in method_names:
+        scores_list = scores_dict[method]
+
+        coverage_list, recall_dict = recall_coverage_curve(
+            scores_list, logits, labels
+        )
+
+        # === Plot Curve ===
+        save_path = os.path.join(fig_path, "recalls_%s.png" % method)
+        line_width = 2
+        markersize = 1
+        alpha = 0.5
+        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(6, 12))
+        font_size = 19
+        tick_size = 20
+
+        for curve_idx, key in enumerate(recall_dict.keys()):
+            x_plot, y_plot = coverage_list, recall_dict[key]
+            
+            if type(key) == int:
+                legend_str = r"Cls - %s" % key 
+                l1 = ax[0].plot(
+                    x_plot, y_plot,
+                    label=legend_str, lw=line_width, alpha=alpha,
+                    color=COLORS[curve_idx % N_COLORS], marker=None, markersize=markersize
+                )
+            else:
+                legend_str = r"Balance Acc."
+                l1 = ax[1].plot(
+                    x_plot, y_plot,
+                    label=legend_str, lw=line_width, alpha=alpha,
+                    color=COLORS[curve_idx % N_COLORS], marker=None, markersize=markersize
+                )
+
+        ax[0].legend(
+            loc='lower left', bbox_to_anchor=(-0.25, 1, 1.25, 0.2), mode="expand", 
+            borderaxespad=0,
+            ncol=3, fancybox=True, shadow=False, fontsize=font_size, framealpha=0.3
+        )
+        ax[0].tick_params(axis='x', which='major', colors='black', labelsize=tick_size)
+        ax[0].tick_params(axis='y', which='major', colors='black', labelsize=tick_size)
+        ax[0].set_ylabel(r"Recalls", fontsize=font_size)
+        ax[0].set_xlabel(r"Coverage", fontsize=font_size)
+
+        ax[1].legend(
+            loc='lower left', bbox_to_anchor=(-0.25, 1, 1.25, 0.2), mode="expand", 
+            borderaxespad=0,
+            ncol=3, fancybox=True, shadow=False, fontsize=font_size, framealpha=0.3
+        )
+        ax[1].tick_params(axis='x', which='major', colors='black', labelsize=tick_size)
+        ax[1].tick_params(axis='y', which='major', colors='black', labelsize=tick_size)
+        ax[1].set_ylabel(r"Balance Acc.", fontsize=font_size)
+        ax[1].set_xlabel(r"Coverage", fontsize=font_size)
+
+        fig.tight_layout()
+        plt.savefig(save_path)
+        plt.close(fig)
