@@ -36,11 +36,11 @@ def collect_logits(model, data_loader, save_res_root, device):
     study2slices = defaultdict(list)
     study2probs = defaultdict(list)
     with torch.no_grad():
-        for x, targets_dict in tqdm(data_loader):
-            input, target = input.to(device), target.to(device)
+        for input, targets_dict in tqdm(data_loader):
+            input = input.to(device)
 
             # compute output
-            cls_logits = model(x)
+            cls_logits = model(input)
             cls_probs = F.sigmoid(cls_logits)
             max_probs = cls_probs.to('cpu').numpy()
 
