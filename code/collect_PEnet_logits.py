@@ -119,5 +119,6 @@ if __name__ == "__main__":
         default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval/models/PE/best.pth.tar"
     )
     args = parser.parse_args()
+    set_seed(args.seed)
     main(args)
     print("All task completed!")
