@@ -20,6 +20,8 @@ import torch.nn.functional as F
 import sys, os, argparse, time
 dir_path = os.path.abspath(".")
 sys.path.append(dir_path)
+dir_path = os.path.abspath(os.path.join(".", "code"))
+sys.path.append(dir_path)
 from utils.utils import set_seed
 
 
