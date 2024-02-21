@@ -75,8 +75,8 @@ def collect_logits(model, data_loader, save_res_root, device):
         label = study2labels[study_num]
         labels_log.append(label)
 
-    logits_log = np.concatenate(logits_log, axis=0)
-    labels_log = np.concatenate(labels_log, axis=0)
+    logits_log = np.asarray(logits_log)
+    labels_log = np.asarray(labels_log)
     print("Check collected shapes -- Logits ", logits_log.shape, "  | Labels ", labels_log.shape)
     save_logits_name = os.path.join(save_res_root, "pred_logits.npy")
     np.save(save_logits_name, logits_log)
