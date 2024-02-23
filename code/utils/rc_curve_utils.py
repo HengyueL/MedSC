@@ -47,7 +47,8 @@ def calculate_acc(pred, label):
 # Get score - pred_correct pairs for RC curve
 def calculate_score_acc(
         logits, labels,
-        weights=None, bias=None  # reserved options in case we need geo margin
+        weights=None, bias=None,  # reserved options in case we need geo margin
+        binary_cls=False
     ):
     method_name_list = []
     scores_dict = {}
@@ -71,14 +72,15 @@ def calculate_score_acc(
 
     # === OURS ====
     # raw margin
-    values, indices = torch.topk(logits_tensor, 2, axis=1)
-    raw_margin_scores = (values[:, 0] - values[:, 1]).cpu().numpy()
-    raw_margin_pred = max_logit_pred
-    raw_margin_acc = calculate_acc(raw_margin_pred, labels)
-    method_name = "conf_margin"
-    method_name_list.append(method_name)
-    scores_dict[method_name] = raw_margin_scores
-    residuals_dict[method_name] = raw_margin_acc
+    if not binary_cls:
+        values, indices = torch.topk(logits_tensor, 2, axis=1)
+        raw_margin_scores = (values[:, 0] - values[:, 1]).cpu().numpy()
+        raw_margin_pred = max_logit_pred
+        raw_margin_acc = calculate_acc(raw_margin_pred, labels)
+        method_name = "conf_margin"
+        method_name_list.append(method_name)
+        scores_dict[method_name] = raw_margin_scores
+        residuals_dict[method_name] = raw_margin_acc
 
     return scores_dict, residuals_dict, method_name_list
 
@@ -129,7 +131,7 @@ def calculate_residual(pred, label):
 
 
 def calculate_score_residual(
-        logits, labels, weight_norm=None
+        logits, labels, weight_norm=None, binary_cls=False
     ):
     scores_dict = {}
     residuals_dict = {}
@@ -151,14 +153,15 @@ def calculate_score_residual(
     residuals_dict[method_name] = max_sr_residuals
         
     # raw margin
-    values, indices = torch.topk(logits_tensor, 2, axis=1)
-    raw_margin_scores = (values[:, 0] - values[:, 1]).cpu().numpy()
-    raw_margin_pred = max_logit_pred
-    raw_margin_residuals = calculate_residual(raw_margin_pred, labels)
-    method_name = "conf_margin"
-    method_name_list.append(method_name)
-    scores_dict[method_name] = raw_margin_scores
-    residuals_dict[method_name] = raw_margin_residuals
+    if not binary_cls:
+        values, indices = torch.topk(logits_tensor, 2, axis=1)
+        raw_margin_scores = (values[:, 0] - values[:, 1]).cpu().numpy()
+        raw_margin_pred = max_logit_pred
+        raw_margin_residuals = calculate_residual(raw_margin_pred, labels)
+        method_name = "conf_margin"
+        method_name_list.append(method_name)
+        scores_dict[method_name] = raw_margin_scores
+        residuals_dict[method_name] = raw_margin_residuals
     return scores_dict, residuals_dict, method_name_list
 
 
@@ -280,7 +283,8 @@ def plot_rc_curve(total_scores_dict, risk_acc_dict, fig_name, method_name_list, 
 # === calculate score and cls index === To plot which samples are rejected first ===
 def calculate_score_sample_cls(
         logits, labels,
-        weights=None, bias=None  # reserved options in case we need geo margin
+        weights=None, bias=None,   # reserved options in case we need geo margin
+        binary_cls=False
     ):
     method_name_list = []
     scores_dict = {}
@@ -300,11 +304,12 @@ def calculate_score_sample_cls(
 
     # === OURS ====
     # raw margin
-    values, _ = torch.topk(logits_tensor, 2, axis=1)
-    raw_margin_scores = (values[:, 0] - values[:, 1]).cpu().numpy()
-    method_name = "conf_margin"
-    method_name_list.append(method_name)
-    scores_dict[method_name] = raw_margin_scores
+    if not binary_cls:
+        values, _ = torch.topk(logits_tensor, 2, axis=1)
+        raw_margin_scores = (values[:, 0] - values[:, 1]).cpu().numpy()
+        method_name = "conf_margin"
+        method_name_list.append(method_name)
+        scores_dict[method_name] = raw_margin_scores
 
     return scores_dict, method_name_list, labels.tolist()
 
