@@ -81,7 +81,7 @@ def main(args):
     # === Plot recall-coverage curve
     fig_path = os.path.join(save_root_dir, "recall-coverage")
     os.makedirs(fig_path, exist_ok=True)
-    plot_recall_coverage_curve(in_d_logits, in_d_labels, fig_path)
+    plot_recall_coverage_curve(in_d_logits, in_d_labels, fig_path, binary_cls=True)
 
 
 if __name__ == "__main__":

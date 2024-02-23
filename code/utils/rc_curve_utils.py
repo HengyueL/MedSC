@@ -433,8 +433,8 @@ def recall_coverage_curve(scores_list, logits, labels):
     return coverage_list, recall_dict
 
 
-def plot_recall_coverage_curve(logits, labels, fig_path):
-    scores_dict, _, method_names = calculate_score_acc(logits, labels)
+def plot_recall_coverage_curve(logits, labels, fig_path, binary_cls=False):
+    scores_dict, _, method_names = calculate_score_acc(logits, labels, binary_cls=binary_cls)
 
     for method in method_names:
         scores_list = scores_dict[method]
