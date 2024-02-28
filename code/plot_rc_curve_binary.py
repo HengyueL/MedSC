@@ -38,12 +38,10 @@ def read_data(root_dir, split="test_set", load_classifier_weight=False):
     return raw_logits, labels, last_layer_weights, last_layer_bias
 
 
-def plot_rc_curve(
-        confidence_scores, risk_acc_list, fig_name,
+def plot_curve(
+        covereage_list, risk_acc_list, fig_name,
         plot_symbol_dict, curve_name="risk-coverage"
     ):
-    coverage_dict, y_dict = {}, {}
-
     # if curve_name == "risk-coverage":
     # elif curve_name == "acc-coverage":
 
@@ -61,18 +59,17 @@ def plot_rc_curve(
 
     y_min = 0
     y_max = 0
-    for method_name in method_name_list:
-        coverage_plot, y_plot = coverage_dict[method_name], y_dict[method_name]
-        # x_plot, y_plot = select_RC_curve_points(coverage_plot, y_plot, plot_n_points, min_num_samples)
-        x_plot, y_plot = coverage_plot, y_plot
-        y_max, y_min = max(y_plot[0], y_max), min(np.amin(y_plot), y_min)
-        # y_max, y_min = max(np.amax(y_plot), y_max), min(np.amin(y_plot), y_min)
-        plot_settings = plot_symbol_dict[method_name]
-        ax.plot(
-            x_plot, y_plot,
-            label=plot_settings[2], lw=line_width, alpha=alpha,
-            color=COLORS[plot_settings[0]], marker=plot_settings[1], ls=plot_settings[3], markersize=markersize
-        )
+   
+    method_name = "max_sr"
+    x_plot, y_plot = covereage_list, risk_acc_list
+    y_max, y_min = max(y_plot[0], y_max), min(np.amin(y_plot), y_min)
+    # y_max, y_min = max(np.amax(y_plot), y_max), min(np.amin(y_plot), y_min)
+    plot_settings = plot_symbol_dict[method_name]
+    ax.plot(
+        x_plot, y_plot,
+        label=curve_name, lw=line_width, alpha=alpha,
+        color=COLORS[plot_settings[0]], marker=plot_settings[1], ls=plot_settings[3], markersize=markersize
+    )
 
     ax.legend(
         loc='lower left', bbox_to_anchor=(-0.25, 1, 1.25, 0.2), mode="expand", 
@@ -93,7 +90,6 @@ def plot_rc_curve(
     fig.tight_layout()
     plt.savefig(save_path)
     plt.close(fig)
-    return coverage_dict, y_dict
 
 
 def main(args):
@@ -125,6 +121,12 @@ def main(args):
 
     coverage_rc, risk_rc = RC_curve(residual_list, confidence_list)
     coverage_acc, risk_acc = acc_coverage_curve(acc_list, confidence_list)
+
+    rc_fig_name = os.path.join(save_rc_curve_root, "risk-coverage-curve.png")
+    plot_curve(coverage_rc, risk_rc, rc_fig_name, PLOT_SYMBOL_DICT)
+
+    acc_fig_name = os.path.join(save_rc_curve_root, "acc-coverage-curve.png")
+    plot_curve(coverage_acc, risk_acc, acc_fig_name, PLOT_SYMBOL_DICT, curve_name="acc-coverage")
 
 
     pass
