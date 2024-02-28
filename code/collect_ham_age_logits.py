@@ -243,7 +243,6 @@ def main(args):
     collect_logits(model, test_loader, save_dir, device)
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -268,3 +267,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(args)
     print("All task completed!")
+
