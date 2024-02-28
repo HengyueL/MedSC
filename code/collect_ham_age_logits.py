@@ -20,6 +20,8 @@ import albumentations as A
 import cv2
 from tqdm import tqdm
 
+from utils.corruptions import corrupt_image
+
 
 # === add abs path for import convenience
 import sys, os, argparse, time
@@ -67,7 +69,7 @@ class SquarePad(nn.Module):
     
 
 class HAM_224_dataset(Dataset):
-    def __init__(self, pathList: list, labelList: list, mode: str) -> None:
+    def __init__(self, pathList: list, labelList: list, mode: str, corruption_type: str="none", severity: int=1) -> None:
         """init function
 
         Args:
@@ -81,6 +83,8 @@ class HAM_224_dataset(Dataset):
         self.pathList = pathList
         self.labelList = labelList
         self.mode = mode
+        self.corruption_type = corruption_type
+        self.severity = severity
         
 
         mean = (0.485, 0.456, 0.406)
@@ -105,6 +109,7 @@ class HAM_224_dataset(Dataset):
     
     def __getitem__(self, idx):
         img = Image.open(self.pathList[idx]).convert("RGB")
+        img = corrupt_image(img, self.corruption_type, self.severity)
         img = self.transform[self.mode](image=np.array(img))
         return img['image'], self.labelList[idx]
 
@@ -244,6 +249,16 @@ if __name__ == "__main__":
         "--seed", dest="seed", type=int,
         default=0,
         help="Random seed."
+    )
+    parser.add_argument(
+        "--corrupt", dest="corrupt", type=str,
+        default="none",
+        help="Corruption type."
+    )
+    parser.add_argument(
+        "--severity", dest="severity", type=int,
+        default=1,
+        help="Corruption severity."
     )
     parser.add_argument(
         "--ckpt_dir", dest="ckpt_dir", type=str,

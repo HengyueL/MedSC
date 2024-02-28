@@ -17,9 +17,10 @@ dir_path = os.path.abspath(".")
 sys.path.append(dir_path)
 from utils.utils import set_seed
 
+from utils.corruptions import corrupt_image
 
 class NIH_224_dataset_fromdf(Dataset):
-    def __init__(self, mode: str, split: str, size: int) -> None:
+    def __init__(self, mode: str, split: str, size: int,  corruption_type: str="none", severity: int=1) -> None:
         """init function
 
         Args:
@@ -38,6 +39,8 @@ class NIH_224_dataset_fromdf(Dataset):
             'Subcutaneous Emphysema', 'Pneumomediastinum'
         ]
         self.mode = mode
+        self.corruption_type = corruption_type
+        self.severity = severity
         self.label_df = pd.read_csv(os.path.join("/scratch.global/peng0347/nih-crx-lt/LongTailCXR", f'nih-cxr-lt_single-label_{split}.csv'))
 
         self.img_paths = self.label_df['id'].apply(lambda x: os.path.join("/scratch.global/peng0347/nih-crx-lt/images/images", x)).values.tolist()
@@ -71,6 +74,7 @@ class NIH_224_dataset_fromdf(Dataset):
         # img = Image.open(self.pathList[idx]).convert("RGB")
         x = cv2.imread(self.img_paths[idx])
         x = cv2.resize(x, (self.size, self.size), interpolation=cv2.INTER_AREA)
+        x = corrupt_image(x, self.corruption_type, self.severity)
         x = self.transform[self.mode](x)
         y = np.array(self.labels[idx])
 
@@ -214,6 +218,16 @@ if __name__ == "__main__":
         "--seed", dest="seed", type=int,
         default=0,
         help="Random seed."
+    )
+    parser.add_argument(
+        "--corrupt", dest="corrupt", type=str,
+        default="none",
+        help="Corruption type."
+    )
+    parser.add_argument(
+        "--severity", dest="severity", type=int,
+        default=1,
+        help="Corruption severity."
     )
     parser.add_argument(
         "--ckpt_root_dir", dest="ckpt_dir", type=str,
