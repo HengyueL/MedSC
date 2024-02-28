@@ -159,9 +159,9 @@ def collect_logits(model, data_loader, save_res_root, device):
 
 def main(args):
     ckpt_name = args.ckpt_file.split("_")[0]
-
+    corr_name = "clean" if args.corrupt == "none" else args.corrupt
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "NIH", ckpt_name)
+    log_root = os.path.join(".", "raw_data_collection", "NIH", ckpt_name, corrupt_image)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction

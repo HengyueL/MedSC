@@ -180,9 +180,10 @@ def collect_logits(model, data_loader, save_res_root, device):
 
 def main(args):
     name_str = args.ckpt_dir.split("/")[-2]
+    corr_name = "clean" if args.corrupt == "none" else args.corrupt
 
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "HAM", "%s" % name_str)
+    log_root = os.path.join(".", "raw_data_collection", "HAM", name_str, corr_name)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction

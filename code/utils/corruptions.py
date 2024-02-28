@@ -433,7 +433,7 @@ def elastic_transform(image, severity=1):
 
 def corrupt_image(img, corruption_type, severity):
     if corruption_type == "none":
-        corrupt_image = img
+        corrupted_img = img
     elif corruption_type == "gaussian_blur":
         corrupted_img = gaussian_blur(img, severity)
     elif corruption_type == "jpeg_compression":
@@ -444,5 +444,5 @@ def corrupt_image(img, corruption_type, severity):
         corrupted_img = motion_blur(img, severity)
     else:
         exit(f"No implementation for the corruption type: {corruption_type}")
-    return corrupt_image
+    return corrupted_img
     
