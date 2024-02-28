@@ -123,7 +123,7 @@ lesion_to_num = {'nv': 0,
         'df': 6}
 
 
-def get_hamage_loaders(bs=128):
+def get_hamage_loaders(corruption, severity, bs=128):
     df = pd.read_csv(HAM_TRAIN_CSV_DIR)
     df.dx = df.dx.map(lambda x: lesion_to_num[x])
     weights = list(dict(sorted(Counter(df.dx).items(), key=lambda x: x[0])).values())
@@ -136,9 +136,15 @@ def get_hamage_loaders(bs=128):
     print(df.shape, df_train.shape, df_test.shape, df_val.shape)
 
 
-    train_ds = HAM_224_dataset(df_train.image_id, df_train.dx, mode='train')
-    val_ds = HAM_224_dataset(df_val.image_id, df_val.dx, mode='val')
-    test_ds = HAM_224_dataset(df_test.image_id, df_test.dx, mode='val')
+    train_ds = HAM_224_dataset(
+        df_train.image_id, df_train.dx, mode='train', corruption_type=corruption, severity=severity
+    )
+    val_ds = HAM_224_dataset(
+        df_val.image_id, df_val.dx, mode='val', corruption_type=corruption, severity=severity
+    )
+    test_ds = HAM_224_dataset(
+        df_test.image_id, df_test.dx, mode='val', corruption_type=corruption, severity=severity
+    )
     dss = {'train': train_ds, 'val': val_ds, 'test': test_ds}
 
     trainloader = DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=4, pin_memory=True)

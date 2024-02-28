@@ -108,13 +108,16 @@ class HAM_224_dataset(Dataset):
         img = self.transform[self.mode](image=np.array(img))
         return img['image'], self.labelList[idx]
 
-lesion_to_num = {'nv': 0,
-        'mel': 1,
-        'bkl': 2,
-        'bcc': 3,
-        'akiec': 4,
-        'vasc': 5,
-        'df': 6}
+
+lesion_to_num = {
+    'nv': 0,
+    'mel': 1,
+    'bkl': 2,
+    'bcc': 3,
+    'akiec': 4,
+    'vasc': 5,
+    'df': 6
+}
 
 
 def get_ham_loaders(bs=128):

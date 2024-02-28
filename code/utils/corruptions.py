@@ -432,6 +432,7 @@ def elastic_transform(image, severity=1):
 
 
 def corrupt_image(img, corruption_type, severity):
+    print("Use corruption: ", corruption_type , severity)
     if corruption_type == "none":
         corrupted_img = img
     elif corruption_type == "gaussian_blur":
