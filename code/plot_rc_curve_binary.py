@@ -1,14 +1,20 @@
 import numpy as np
 import argparse
 
+import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
+import matplotlib.colors as mcolors
+import seaborn as sns
+sns.set()
+COLORS = list(mcolors.TABLEAU_COLORS)
+N_COLORS = len(COLORS)
+
 # === add abs path for import convenience
 import sys, os
 dir_path = os.path.abspath(".")
 sys.path.append(dir_path)
 from utils.utils import clear_terminal_output
-from utils.rc_curve_utils import compute_recalls, calculate_score_acc, calculate_score_residual, \
-    plot_rc_curve, plot_sample_percentage_coverage_curve, calculate_score_sample_cls, \
-    plot_recall_coverage_curve
+from utils.rc_curve_utils import RC_curve, acc_coverage_curve
 
 
 # GLOBAL VARs
@@ -32,8 +38,66 @@ def read_data(root_dir, split="test_set", load_classifier_weight=False):
     return raw_logits, labels, last_layer_weights, last_layer_bias
 
 
+def plot_rc_curve(
+        confidence_scores, risk_acc_list, fig_name,
+        plot_symbol_dict, curve_name="risk-coverage"
+    ):
+    coverage_dict, y_dict = {}, {}
+
+    # if curve_name == "risk-coverage":
+    # elif curve_name == "acc-coverage":
+
+    # === Plot RC Curve ===
+    plot_n_points = 30
+    min_num_samples = -100
+    save_path = fig_name
+    line_width = 1
+    markersize = 1
+    alpha = 0.5
+
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 6))
+    font_size = 19
+    tick_size = 20
+
+    y_min = 0
+    y_max = 0
+    for method_name in method_name_list:
+        coverage_plot, y_plot = coverage_dict[method_name], y_dict[method_name]
+        # x_plot, y_plot = select_RC_curve_points(coverage_plot, y_plot, plot_n_points, min_num_samples)
+        x_plot, y_plot = coverage_plot, y_plot
+        y_max, y_min = max(y_plot[0], y_max), min(np.amin(y_plot), y_min)
+        # y_max, y_min = max(np.amax(y_plot), y_max), min(np.amin(y_plot), y_min)
+        plot_settings = plot_symbol_dict[method_name]
+        ax.plot(
+            x_plot, y_plot,
+            label=plot_settings[2], lw=line_width, alpha=alpha,
+            color=COLORS[plot_settings[0]], marker=plot_settings[1], ls=plot_settings[3], markersize=markersize
+        )
+
+    ax.legend(
+        loc='lower left', bbox_to_anchor=(-0.25, 1, 1.25, 0.2), mode="expand", 
+        borderaxespad=0,
+        ncol=3, fancybox=True, shadow=False, fontsize=font_size, framealpha=0.3
+    )
+    ax.tick_params(axis='x', which='major', colors='black', labelsize=tick_size)
+    ax.tick_params(axis='y', which='major', colors='black', labelsize=tick_size)
+    ax.set_ylabel(r"%s" % curve_name.split("-")[0], fontsize=font_size)
+    ax.set_xlabel(r"Coverage", fontsize=font_size)
+    if curve_name == "risk-coverage":
+        ax.set_ylim([y_min-0.05*y_max, 1.10*y_max])
+        ax.set_xticks([0, 0.5, 1])
+        ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        ax.set_xlim([-0.02, 1.05])
+        ax.set_yticks([y_max/2, y_max])
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+    fig.tight_layout()
+    plt.savefig(save_path)
+    plt.close(fig)
+    return coverage_dict, y_dict
+
 
 def main(args):
+    gamma = args.gamma
     # === Root dir to read collected data ===
     root_dir = args.root_dir
     exp_dir = args.exp_dir
@@ -45,43 +109,25 @@ def main(args):
 
     # ===  Load In-D collected data ===
     in_d_logits, in_d_labels, fc_weights, fc_bias = read_data(read_root_dir, split="test_set", load_classifier_weight=False)
-    in_d_logits = in_d_logits[:, np.newaxis]
     print("Check In-D shapes: ", in_d_logits.shape, in_d_labels.shape)
-
-    print("Check In-D shapes: ", in_d_logits.shape, in_d_labels.shape)
-    acc = np.mean(np.argmax(in_d_logits, axis=1) == in_d_labels) * 100
-    print("Acc - %.04f" % acc)
-    
-    # Compute recalls and balanced accuracy
-    # recall_dict = compute_recalls(in_d_logits, in_d_labels)
-    # print("Check recalls: ", recall_dict)
     
     save_rc_curve_root = os.path.join(save_root_dir, "rc_curves")
     os.makedirs(save_rc_curve_root, exist_ok=True)
-    # # === Check RC and acc-coverage curve ===
-    acc_scores, acc_list, acc_method_list = calculate_score_acc(in_d_logits, in_d_labels, binary_cls=True)
-    acc_fig_name = os.path.join(save_rc_curve_root, "acc-coverage-curve.png")
-    acc_coverage_dict, acc_dict = plot_rc_curve(
-        acc_scores, acc_list, acc_fig_name, acc_method_list, PLOT_SYMBOL_DICT, curve_name="acc-coverage"
-    )
 
-    # === Check RC and acc-coverage curve ===
-    risk_scores, risk_list, risk_method_list = calculate_score_residual(in_d_logits, in_d_labels, binary_cls=True)
-    risk_fig_name = os.path.join(save_rc_curve_root, "risk-coverage-curve.png")
-    risk_coverage_dict, risk_dict = plot_rc_curve(
-        risk_scores, risk_list, risk_fig_name, risk_method_list, PLOT_SYMBOL_DICT, curve_name="risk-coverage"
-    )
+    # ==== Process experiment data ====
+    pred = np.where(in_d_logits > gamma, 1, 0)
+    acc = np.mean(pred == in_d_labels) * 100
+    print("Acc : %.04f" % acc)
 
-    # === Plot sample rejection dynamics ===
-    scores_dict, method_names, labels_list = calculate_score_sample_cls(in_d_logits, in_d_labels, binary_cls=True)
-    fig_path = os.path.join(save_root_dir, "class-wise-sample-rejection")
-    os.makedirs(fig_path, exist_ok=True)
-    plot_sample_percentage_coverage_curve(scores_dict, method_names, labels_list, fig_path)
+    confidence_list = np.abs(gamma - in_d_logits)
+    acc_list = np.where(pred==in_d_labels, 1, 0)
+    residual_list = np.where(pred==in_d_labels, 0, 1)
 
-    # === Plot recall-coverage curve
-    fig_path = os.path.join(save_root_dir, "recall-coverage")
-    os.makedirs(fig_path, exist_ok=True)
-    plot_recall_coverage_curve(in_d_logits, in_d_labels, fig_path, binary_cls=True)
+    coverage_rc, risk_rc = RC_curve(residual_list, confidence_list)
+    coverage_acc, risk_acc = acc_coverage_curve(acc_list, confidence_list)
+
+
+    pass
 
 
 if __name__ == "__main__":
@@ -98,6 +144,11 @@ if __name__ == "__main__":
         "--exp_dir", dest="exp_dir", type=str,
         default="PE_net\\PE",
         help="Experiment subfolder where collected data are located."
+    )
+    parser.add_argument(
+        "--gamma", dest="gamma", type=float,
+        default=0.5,
+        help="Binary cls decision boundary."
     )
     args = parser.parse_args()
     main(args)
