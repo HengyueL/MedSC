@@ -64,7 +64,9 @@ class SquarePad(nn.Module):
         return F.pad(image, padding, 0, 'constant')
 
 class HAM_224_dataset(Dataset):
-    def __init__(self, pathList: list, labelList: list, mode: str, corruption_type: str="none", severity: int=1) -> None:
+    def __init__(
+            self, pathList: list, labelList: list, mode: str, corruption_type: str="none", severity: int=1
+        ) -> None:
         """init function
 
         Args:
@@ -120,7 +122,7 @@ lesion_to_num = {
 }
 
 
-def get_ham_loaders(bs=128):
+def get_ham_loaders(corrupt="none", severity=1, bs=128):
     df = pd.read_csv(HAM_CSV_DIR)
     df.dx = df.dx.map(lambda x: lesion_to_num[x])
     weights = list(dict(sorted(Counter(df.dx).items(), key=lambda x: x[0])).values())
@@ -134,9 +136,15 @@ def get_ham_loaders(bs=128):
     print(df.shape, df_train.shape, df_test.shape, df_val.shape)
 
 
-    train_ds = HAM_224_dataset(df_train.image_id, df_train.dx, mode='train')
-    val_ds = HAM_224_dataset(df_val.image_id, df_val.dx, mode='val')
-    test_ds = HAM_224_dataset(df_test.image_id, df_test.dx, mode='val')
+    train_ds = HAM_224_dataset(
+        df_train.image_id, df_train.dx, mode='train', corruption_type=corrupt, severity=severity
+    )
+    val_ds = HAM_224_dataset(
+        df_val.image_id, df_val.dx, mode='val', corruption_type=corrupt, severity=severity
+    )
+    test_ds = HAM_224_dataset(
+        df_test.image_id, df_test.dx, mode='val', corruption_type=corrupt, severity=severity
+    )
     dss = {'train': train_ds, 'val': val_ds, 'test': test_ds}
 
     trainloader = DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=4, pin_memory=False)
@@ -220,7 +228,7 @@ def main(args):
     np.save(save_weight_name, weights)
     np.save(save_bias_name, bias)
 
-    dss, stats = get_ham_loaders()
+    dss, stats = get_ham_loaders(corrupt=args.corrupt, severity=args.severity)
     
     # === Collect Training Logits === 
     train_loader = dss["train"]

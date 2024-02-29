@@ -123,7 +123,7 @@ lesion_to_num = {'nv': 0,
         'df': 6}
 
 
-def get_hamage_loaders(corruption, severity, bs=128):
+def get_hamage_loaders(corruption="none", severity=1, bs=128):
     df = pd.read_csv(HAM_TRAIN_CSV_DIR)
     df.dx = df.dx.map(lambda x: lesion_to_num[x])
     weights = list(dict(sorted(Counter(df.dx).items(), key=lambda x: x[0])).values())
@@ -228,7 +228,9 @@ def main(args):
     np.save(save_weight_name, weights)
     np.save(save_bias_name, bias)
 
-    dss, stats = get_hamage_loaders()
+    dss, stats = get_hamage_loaders(
+        corruption=args.corrupt, severity=args.severity
+    )
     
     # === Collect Training Logits === 
     train_loader = dss["train"]
