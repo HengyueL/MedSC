@@ -11,6 +11,16 @@ import torch
 from torchvision import models
 import torch.nn as nn
 from tqdm import tqdm
+from PIL import Image
+from torchvision import transforms
+import matplotlib.pyplot as plt
+from albumentations import ( Compose, OneOf, Normalize, Resize, RandomResizedCrop, RandomCrop, HorizontalFlip, VerticalFlip, 
+    RandomBrightness, RandomContrast, RandomBrightnessContrast, Rotate, ShiftScaleRotate, Cutout, IAAAdditiveGaussianNoise, Transpose, ToGray )
+from albumentations.augmentations.transforms import CLAHE
+from albumentations.pytorch import ToTensorV2
+import albumentations as A
+
+
 # === add abs path for import convenience
 import sys, os, argparse, time
 dir_path = os.path.abspath(".")
@@ -51,19 +61,18 @@ class NIH_224_dataset_fromdf(Dataset):
 
         mean = (0.485, 0.456, 0.406)
         std = (0.229, 0.224, 0.225)
-        
         self.transform = {
-            "train": torchvision.transforms.Compose([
-                torchvision.transforms.ToPILImage(),
-                torchvision.transforms.RandomHorizontalFlip(),
-                torchvision.transforms.RandomRotation(15),
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225) )
+            "train": A.Compose([
+                Resize(224, 224),
+                HorizontalFlip(),
+                Rotate(limit=15),
+                Normalize(mean=mean, std=std),
+                ToTensorV2(),
             ]),
-            "val": torchvision.transforms.Compose([
-                torchvision.transforms.ToPILImage(),
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225) )
+            "val": A.Compose([
+                Resize(224, 224),
+                Normalize(mean=mean, std=std),
+                ToTensorV2(),
             ])
         }
     
@@ -71,11 +80,9 @@ class NIH_224_dataset_fromdf(Dataset):
         return len(self.img_paths)
     
     def __getitem__(self, idx):
-        # img = Image.open(self.pathList[idx]).convert("RGB")
-        x = cv2.imread(self.img_paths[idx])
-        x = cv2.resize(x, (self.size, self.size), interpolation=cv2.INTER_AREA)
+        x = Image.open(self.img_paths[idx]).convert("RGB")
         x = corrupt_image(x, self.corruption_type, self.severity)
-        x = self.transform[self.mode](x)
+        x = self.transform[self.mode](image=np.array(x))['image']
         y = np.array(self.labels[idx])
 
         return x.float(), torch.from_numpy(y).long()
@@ -125,6 +132,13 @@ def get_NIH_TL_dataloader(corrupt="none", severity=1, bs=256, size=224):
     testloader = DataLoader(test_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=True)
     btestloader = DataLoader(btest_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=True)
     
+    ## show an visualization
+    dl_iter = iter(testloader)
+    print(next(dl_iter)[0].shape)
+    grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
+    plt.imshow(grid_img.permute(1, 2, 0))
+    plt.savefig(f"figs/NIH_{corrupt}_{severity}.png", dpi=500)
+
     dls = {'train': trainloader, 'val': valloader, 'test': testloader, 'btest': btestloader} 
 
     ## get dataset stats
@@ -184,7 +198,6 @@ def main(args):
     model.load_state_dict(weights)
     model.to(device)
     model.eval()
-
 
     # === Collect Model fc weights and bias ===
     last_layer = model.fc

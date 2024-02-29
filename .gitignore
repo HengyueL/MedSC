@@ -4,3 +4,5 @@ code/ct/__pycache__/
 code/PE_utils/transforms/__pycache__/
 ./raw_data_collection/
 ./process_rc_data/
+code/figs/
+debug.sh

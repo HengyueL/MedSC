@@ -448,5 +448,6 @@ def corrupt_image(img, corruption_type, severity):
         corrupted_img = motion_blur(img, severity)
     else:
         exit(f"No implementation for the corruption type: {corruption_type}")
+    # print(img.size, corrupted_img.size)
     return corrupted_img
     

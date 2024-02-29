@@ -10,6 +10,8 @@ import pandas as pd
 from collections import Counter
 from PIL import Image
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
+import torchvision
 
 from albumentations import ( Compose, OneOf, Normalize, Resize, RandomResizedCrop, RandomCrop, HorizontalFlip, VerticalFlip, 
     RandomBrightness, RandomContrast, RandomBrightnessContrast, Rotate, ShiftScaleRotate, Cutout, IAAAdditiveGaussianNoise, Transpose, ToGray )
@@ -151,6 +153,14 @@ def get_ham_loaders(corrupt="none", severity=1, bs=128):
     valloader = DataLoader(val_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=False)
     testloader = DataLoader(test_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=False)
     
+
+    ## show an visualization
+    dl_iter = iter(testloader)
+    print(next(dl_iter)[0].shape)
+    grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
+    plt.imshow(grid_img.permute(1, 2, 0))
+    plt.savefig(f"figs/HAM_{corrupt}_{severity}.png", dpi=500)
+
     dls = {'train': trainloader, 'val': valloader, 'test': testloader} 
 
     ## get dataset stats
