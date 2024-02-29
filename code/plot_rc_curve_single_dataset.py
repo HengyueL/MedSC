@@ -40,7 +40,7 @@ def main(args):
     read_root_dir = os.path.join(root_dir, exp_dir)
 
     # === Root dir to save processed 
-    save_root_dir = os.path.join("process_rc_data", exp_dir, "in-d")
+    save_root_dir = os.path.join("process_rc_data", exp_dir)
     os.makedirs(save_root_dir, exist_ok=True)
 
     # ===  Load In-D collected data ===
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--exp_dir", dest="exp_dir", type=str,
-        default="HAMAGE\\wce",
+        default="HAM\\ce\\clean",
         help="Experiment subfolder where collected data are located."
     )
     args = parser.parse_args()
