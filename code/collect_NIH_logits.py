@@ -91,7 +91,7 @@ def parse_df(df, one_hot=False):
     return path, labels
 
 
-def get_NIH_TL_dataloader(bs=256, size=224):
+def get_NIH_TL_dataloader(corrupt="none", severity=1, bs=256, size=224):
     train_df = pd.read_csv("/scratch.global/peng0347/nih-crx-lt/LongTailCXR/nih-cxr-lt_single-label_train.csv")
     val_df = pd.read_csv("/scratch.global/peng0347/nih-crx-lt/LongTailCXR/nih-cxr-lt_single-label_balanced-val.csv")
     test_df = pd.read_csv("/scratch.global/peng0347/nih-crx-lt/LongTailCXR/nih-cxr-lt_single-label_test.csv")
@@ -106,10 +106,18 @@ def get_NIH_TL_dataloader(bs=256, size=224):
     # val_ds = NIH_224_dataset(val_path, val_labels, mode='val')
     # test_ds = NIH_224_dataset(test_path, test_labels, mode='val')
     
-    train_ds = NIH_224_dataset_fromdf(mode='train', split="train", size=size)
-    val_ds = NIH_224_dataset_fromdf(mode='val', split="balanced-val", size=size)
-    test_ds = NIH_224_dataset_fromdf(mode='val', split='test', size=size)
-    btest_ds = NIH_224_dataset_fromdf(mode='val', split='balanced-test', size=size)
+    train_ds = NIH_224_dataset_fromdf(
+        mode='train', split="train", size=size, corruption_type=corrupt, severity=severity
+    )
+    val_ds = NIH_224_dataset_fromdf(
+        mode='val', split="balanced-val", size=size, corruption_type=corrupt, severity=severity
+    )
+    test_ds = NIH_224_dataset_fromdf(
+        mode='val', split='test', size=size, corruption_type=corrupt, severity=severity
+    )
+    btest_ds = NIH_224_dataset_fromdf(
+        mode='val', split='balanced-test', size=size, corruption_type=corrupt, severity=severity
+    )
     # dss = {'train': train_ds, 'val': val_ds, 'test': test_ds}
 
     trainloader = DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=4, pin_memory=True)
@@ -161,7 +169,7 @@ def main(args):
     ckpt_name = args.ckpt_file.split("_")[0]
     corr_name = "clean" if args.corrupt == "none" else args.corrupt
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "NIH", ckpt_name, corrupt_image)
+    log_root = os.path.join(".", "raw_data_collection", "NIH", ckpt_name, corr_name)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction
@@ -191,7 +199,10 @@ def main(args):
     np.save(save_weight_name, weights)
     np.save(save_bias_name, bias)
 
-    dss, stats = get_NIH_TL_dataloader()
+    dss, stats = get_NIH_TL_dataloader(
+        corrupt=args.corrupt,
+        severity=args.severity
+    )
 
     # === Collect Training Logits === 
     train_loader = dss["train"]
@@ -231,7 +242,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--ckpt_root_dir", dest="ckpt_dir", type=str,
-        default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval/models/NIH/"
+        default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval_archieved/models/NIH/"
     )
     parser.add_argument(
         "--ckpt_file", dest="ckpt_file", type=str, default="decoupling-cRT_nih.pt"
