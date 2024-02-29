@@ -191,7 +191,10 @@ def collect_logits(model, data_loader, save_res_root, device):
 
 def main(args):
     name_str = args.ckpt_dir.split("/")[-2]
-    corr_name = "clean" if args.corrupt == "none" else args.corrupt
+    if args.corrupt == "none":
+        corr_name = "clean" 
+    else:
+        corr_name = args.corrupt
 
     # === Create Exp Save Root ===
     log_root = os.path.join(".", "raw_data_collection", "HAM", name_str, corr_name)
