@@ -6,6 +6,7 @@ code/PE_utils/transforms/__pycache__/
 ./raw_data_collection_old/
 ./code/raw_data_collection/
 ./process_rc_data/
+./process_rc_data_old/
 ./code/debug_fig/
 code/figs/
 debug.sh
