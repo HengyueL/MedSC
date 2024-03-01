@@ -159,7 +159,7 @@ def get_ham_loaders(corrupt="none", severity=1, bs=128):
     print(next(dl_iter)[0].shape)
     grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
     plt.imshow(grid_img.permute(1, 2, 0))
-    plt.savefig(f"figs/HAM_{corrupt}_{severity}.png", dpi=500)
+    plt.savefig(f"debug_figs/HAM_{corrupt}_{severity}.png", dpi=500)
 
     dls = {'train': trainloader, 'val': valloader, 'test': testloader} 
 

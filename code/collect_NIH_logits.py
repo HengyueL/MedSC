@@ -14,8 +14,8 @@ from tqdm import tqdm
 from PIL import Image
 from torchvision import transforms
 import matplotlib.pyplot as plt
-from albumentations import ( Compose, OneOf, Normalize, Resize, RandomResizedCrop, RandomCrop, HorizontalFlip, VerticalFlip, 
-    RandomBrightness, RandomContrast, RandomBrightnessContrast, Rotate, ShiftScaleRotate, Cutout, IAAAdditiveGaussianNoise, Transpose, ToGray )
+from albumentations import Compose, OneOf, Normalize, Resize, RandomResizedCrop, RandomCrop, HorizontalFlip, VerticalFlip, \
+    RandomBrightness, RandomContrast, RandomBrightnessContrast, Rotate, ShiftScaleRotate, Cutout, IAAAdditiveGaussianNoise, Transpose, ToGray
 from albumentations.augmentations.transforms import CLAHE
 from albumentations.pytorch import ToTensorV2
 import albumentations as A
@@ -137,7 +137,7 @@ def get_NIH_TL_dataloader(corrupt="none", severity=1, bs=256, size=224):
     print(next(dl_iter)[0].shape)
     grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
     plt.imshow(grid_img.permute(1, 2, 0))
-    plt.savefig(f"figs/NIH_{corrupt}_{severity}.png", dpi=500)
+    plt.savefig(f"debug_figs/NIH_{corrupt}_{severity}.png", dpi=500)
 
     dls = {'train': trainloader, 'val': valloader, 'test': testloader, 'btest': btestloader} 
 
