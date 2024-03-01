@@ -5,4 +5,4 @@ This is the first commit.
 
 ```cd <MedSC>```
 
-```code/collect_ham_logits.py```
+```python code/collect_ham_logits.py```
