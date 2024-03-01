@@ -176,7 +176,7 @@ def glass_blur(x, severity=1):
                 x[h, w], x[h_prime, w_prime] = x[h_prime, w_prime], x[h, w]
 
     # return np.clip(gaussian(x / 255., sigma=c[0], multichannel=True), 0, 1) * 255
-                return np.clip(gaussian(x / 255., sigma=c[0]), 0, 1) * 255
+    return np.clip(gaussian(x / 255., sigma=c[0], channel_axis=2), 0, 1,) * 255
 
 
 def defocus_blur(x, severity=1):
