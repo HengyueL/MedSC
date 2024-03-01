@@ -137,6 +137,7 @@ def get_NIH_TL_dataloader(corrupt="none", severity=1, bs=256, size=224):
     print(next(dl_iter)[0].shape)
     grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
     plt.imshow(grid_img.permute(1, 2, 0))
+    os.makedirs("debug_figs", exist_ok=True)
     plt.savefig(f"debug_figs/NIH_{corrupt}_{severity}.png", dpi=500)
 
     dls = {'train': trainloader, 'val': valloader, 'test': testloader, 'btest': btestloader} 
