@@ -32,7 +32,6 @@ def read_data(root_dir, split="test_set", load_classifier_weight=False):
     return raw_logits, labels, last_layer_weights, last_layer_bias
 
 
-
 def main(args):
     # === Root dir to read collected data ===
     root_dir = args.root_dir
@@ -95,7 +94,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--exp_dir", dest="exp_dir", type=str,
-        default="HAM\\ce\\clean",
+        default="HAM\\ldam\gaussian_blur",
         help="Experiment subfolder where collected data are located."
     )
     args = parser.parse_args()
