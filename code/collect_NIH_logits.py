@@ -256,7 +256,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--ckpt_root_dir", dest="ckpt_dir", type=str,
-        default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval_archieved/models/NIH/"
+        default="/panfs/jay/groups/15/jusun/shared/For_HY/models/NIH/"
     )
     parser.add_argument(
         "--ckpt_file", dest="ckpt_file", type=str, default="decoupling-cRT_nih.pt"

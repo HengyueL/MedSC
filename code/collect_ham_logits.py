@@ -282,7 +282,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--ckpt_dir", dest="ckpt_dir", type=str,
-        default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval_archieved/models/HAM/ce/final.pt"
+        default="/panfs/jay/groups/15/jusun/shared/For_HY/models/HAM/ce/final.pt"
     )
     args = parser.parse_args()
     main(args)
