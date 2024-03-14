@@ -137,11 +137,19 @@ def get_ham_loaders(corrupt="none", severity=1, bs=128, pi=128):
     df_train = df_tmp.iloc[idx_train].reset_index(drop=True)
     print(df.shape, df_train.shape, df_test.shape, df_val.shape)
 
-    df = df[df.mean_pixel_intensity>pi].reset_index(drop=True)
-    df_train = df_train[df_train.mean_pixel_intensity>pi].reset_index(drop=True)
-    df_val = df_val[df_val.mean_pixel_intensity>pi].reset_index(drop=True)
-    df_test = df_test[df_test.mean_pixel_intensity>pi].reset_index(drop=True)
+    if pi > 0:
+        df = df[df.mean_pixel_intensity>pi].reset_index(drop=True)
+        df_train = df_train[df_train.mean_pixel_intensity>pi].reset_index(drop=True)
+        df_val = df_val[df_val.mean_pixel_intensity>pi].reset_index(drop=True)
+        df_test = df_test[df_test.mean_pixel_intensity>pi].reset_index(drop=True)
+    else:
+        df = df[df.mean_pixel_intensity<-pi].reset_index(drop=True)
+        df_train = df_train[df_train.mean_pixel_intensity<-pi].reset_index(drop=True)
+        df_val = df_val[df_val.mean_pixel_intensity<-pi].reset_index(drop=True)
+        df_test = df_test[df_test.mean_pixel_intensity<-pi].reset_index(drop=True)
+
     print(df.shape, df_train.shape, df_test.shape, df_val.shape)
+
 
     train_ds = HAM_224_dataset(
         df_train.image_id, df_train.dx, mode='train', corruption_type=corrupt, severity=severity
