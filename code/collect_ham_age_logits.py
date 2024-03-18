@@ -3,9 +3,7 @@ from torchvision import models
 import collections
 from torch.utils.data import DataLoader, Dataset
 import torch.nn as nn
-from torchvision import transforms
 import numpy as np
-from torch.utils.data.sampler import SubsetRandomSampler
 import pandas as pd
 from collections import Counter
 from PIL import Image
@@ -14,12 +12,9 @@ import matplotlib.pyplot as plt
 import torchvision
 
 
-from albumentations import ( Compose, OneOf, Normalize, Resize, RandomResizedCrop, RandomCrop, HorizontalFlip, VerticalFlip, 
-    RandomBrightness, RandomContrast, RandomBrightnessContrast, Rotate, ShiftScaleRotate, Cutout, IAAAdditiveGaussianNoise, Transpose, ToGray )
-from albumentations.augmentations.transforms import CLAHE
+from albumentations import Normalize, Resize, RandomCrop
 from albumentations.pytorch import ToTensorV2
 import albumentations as A
-import cv2
 from tqdm import tqdm
 
 from utils.corruptions import corrupt_image
@@ -158,7 +153,7 @@ def get_hamage_loaders(corruption="none", severity=1, bs=128):
     print(next(dl_iter)[0].shape)
     grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
     plt.imshow(grid_img.permute(1, 2, 0))
-    plt.savefig(f"figs/HAMAGE_{corrupt}_{severity}.png", dpi=500)
+    plt.savefig(f"figs/HAMAGE_{corruption}_{severity}.png", dpi=500)
 
     dls = {'train': trainloader, 'val': valloader, 'test': testloader} 
 
