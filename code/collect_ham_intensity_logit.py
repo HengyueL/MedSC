@@ -11,12 +11,14 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import torchvision
 
+
 from albumentations import Normalize, Resize, RandomCrop
 from albumentations.pytorch import ToTensorV2
 import albumentations as A
 from tqdm import tqdm
 
 from utils.corruptions import corrupt_image
+
 
 # === add abs path for import convenience
 import sys, os, argparse, time
@@ -25,7 +27,8 @@ sys.path.append(dir_path)
 from utils.utils import set_seed
 
 
-HAM_CSV_DIR = "/panfs/jay/groups/15/jusun/shared/HAM/HAM10000_wpi.csv"
+HAM_TRAIN_CSV_DIR = "/panfs/jay/groups/15/jusun/shared/HAM/HAM10000_wpi_l.csv"
+HAM_TEST_CSV_DIR = "/panfs/jay/groups/15/jusun/shared/HAM/HAM10000_wpi_h.csv"
 
 
 def stratfy_sampling(labelList, ratio, return_mask=False):
@@ -48,6 +51,7 @@ def stratfy_sampling(labelList, ratio, return_mask=False):
         return 1-test_mask, test_mask
     else:
         return list(set(range(len(labelList)))- set(test_idx)), test_idx
+    
 
 class SquarePad(nn.Module):
     """squre input image and pad with 0s
@@ -59,11 +63,10 @@ class SquarePad(nn.Module):
         vp = int((max_wh - h) / 2)
         padding = (hp, vp, hp, vp)
         return F.pad(image, padding, 0, 'constant')
+    
 
 class HAM_224_dataset(Dataset):
-    def __init__(
-            self, pathList: list, labelList: list, mode: str, corruption_type: str="none", severity: int=1
-        ) -> None:
+    def __init__(self, pathList: list, labelList: list, mode: str, corruption_type: str="none", severity: int=1) -> None:
         """init function
 
         Args:
@@ -108,67 +111,49 @@ class HAM_224_dataset(Dataset):
         return img['image'], self.labelList[idx]
 
 
-lesion_to_num = {
-    'nv': 0,
-    'mel': 1,
-    'bkl': 2,
-    'bcc': 3,
-    'akiec': 4,
-    'vasc': 5,
-    'df': 6
-}
+lesion_to_num = {'nv': 0,
+        'mel': 1,
+        'bkl': 2,
+        'bcc': 3,
+        'akiec': 4,
+        'vasc': 5,
+        'df': 6}
 
 
-def get_ham_loaders(corrupt="none", severity=1, bs=128, pi=128):
-    df = pd.read_csv(HAM_CSV_DIR)
+def get_hampi_loaders(corruption="none", severity=1, bs=128):
+    df = pd.read_csv(HAM_TRAIN_CSV_DIR)
     df.dx = df.dx.map(lambda x: lesion_to_num[x])
     weights = list(dict(sorted(Counter(df.dx).items(), key=lambda x: x[0])).values())
-    idx_train, idx_test = stratfy_sampling(df.dx, ratio=0.2)
-    df_test = df.iloc[idx_test].reset_index(drop=True)
-    df_tmp = df.iloc[idx_train].reset_index(drop=True)
+    idx_train, idx_tmp = stratfy_sampling(df.dx, ratio=0.2)
+    df_val = df.iloc[idx_tmp, :].reset_index(drop=True)
+    df_train = df.iloc[idx_train].reset_index(drop=True)
 
-    idx_train, idx_val = stratfy_sampling(df_tmp.dx, ratio=0.2)
-    df_val = df_tmp.iloc[idx_val].reset_index(drop=True)
-    df_train = df_tmp.iloc[idx_train].reset_index(drop=True)
-    print(df.shape, df_train.shape, df_test.shape, df_val.shape)
-
-    if pi > 0:
-        df = df[df.mean_pixel_intensity>pi].reset_index(drop=True)
-        df_train = df_train[df_train.mean_pixel_intensity>pi].reset_index(drop=True)
-        df_val = df_val[df_val.mean_pixel_intensity>pi].reset_index(drop=True)
-        df_test = df_test[df_test.mean_pixel_intensity>pi].reset_index(drop=True)
-    else:
-        df = df[df.mean_pixel_intensity<-pi].reset_index(drop=True)
-        df_train = df_train[df_train.mean_pixel_intensity<-pi].reset_index(drop=True)
-        df_val = df_val[df_val.mean_pixel_intensity<-pi].reset_index(drop=True)
-        df_test = df_test[df_test.mean_pixel_intensity<-pi].reset_index(drop=True)
-
+    df_test = pd.read_csv(HAM_TEST_CSV_DIR)
+    df_test.dx = df_test.dx.map(lambda x: lesion_to_num[x])
     print(df.shape, df_train.shape, df_test.shape, df_val.shape)
 
 
     train_ds = HAM_224_dataset(
-        df_train.image_id, df_train.dx, mode='train', corruption_type=corrupt, severity=severity
+        df_train.image_id, df_train.dx, mode='train', corruption_type=corruption, severity=severity
     )
     val_ds = HAM_224_dataset(
-        df_val.image_id, df_val.dx, mode='val', corruption_type=corrupt, severity=severity
+        df_val.image_id, df_val.dx, mode='val', corruption_type=corruption, severity=severity
     )
     test_ds = HAM_224_dataset(
-        df_test.image_id, df_test.dx, mode='val', corruption_type=corrupt, severity=severity
+        df_test.image_id, df_test.dx, mode='val', corruption_type=corruption, severity=severity
     )
     dss = {'train': train_ds, 'val': val_ds, 'test': test_ds}
 
-    trainloader = DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=4, pin_memory=False)
-    valloader = DataLoader(val_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=False)
-    testloader = DataLoader(test_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=False)
+    trainloader = DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=4, pin_memory=True)
+    valloader = DataLoader(val_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=True)
+    testloader = DataLoader(test_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=True)
     
 
-    ## show an visualization
     dl_iter = iter(testloader)
     print(next(dl_iter)[0].shape)
     grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
     plt.imshow(grid_img.permute(1, 2, 0))
-    os.makedirs("debug_figs", exist_ok=True)
-    plt.savefig(f"debug_figs/HAM_{corrupt}_{severity}_{pi}.png", dpi=500)
+    plt.savefig(f"figs/HAMAGE_{corruption}_{severity}.png", dpi=500)
 
     dls = {'train': trainloader, 'val': valloader, 'test': testloader} 
 
@@ -210,13 +195,10 @@ def collect_logits(model, data_loader, save_res_root, device):
 
 def main(args):
     name_str = args.ckpt_dir.split("/")[-2]
-    if "none" in args.corrupt:
-        corr_name = "clean" 
-    else:
-        corr_name = args.corrupt
+    corr_name = "clean" if args.corrupt == "none" else args.corrupt
 
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "HAM", name_str, corr_name)
+    log_root = os.path.join(".", "raw_data_collection", "HAMAGE", name_str, corr_name)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction
@@ -225,7 +207,7 @@ def main(args):
     # Prepare Pretrained Model
     num_classes = 7
     model = models.resnet50()
-    backbone=nn.Sequential(*list(model.children())[:-1], nn.Flatten())
+    backbone = nn.Sequential(*list(model.children())[:-1], nn.Flatten())
     model = torch.nn.Sequential(
         collections.OrderedDict([
                 ("backbone", backbone),
@@ -250,7 +232,9 @@ def main(args):
     np.save(save_weight_name, weights)
     np.save(save_bias_name, bias)
 
-    dss, stats = get_ham_loaders(corrupt=args.corrupt, severity=args.severity, pi=args.pi)
+    dss, stats = get_hampi_loaders(
+        corruption=args.corrupt, severity=args.severity
+    )
     
     # === Collect Training Logits === 
     train_loader = dss["train"]
@@ -279,11 +263,6 @@ if __name__ == "__main__":
         help="Random seed."
     )
     parser.add_argument(
-        "--pi", dest="pi", type=int,
-        default=128,
-        help="Pixel intensity."
-    )
-    parser.add_argument(
         "--corrupt", dest="corrupt", type=str,
         default="none",
         help="Corruption type."
@@ -295,9 +274,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--ckpt_dir", dest="ckpt_dir", type=str,
-        default="/panfs/jay/groups/15/jusun/shared/For_HY/models/HAM/ce/final.pt"
+        default="/panfs/jay/groups/15/jusun/shared/For_HY/models/HAMPI/ce/final.pt"
     )
     args = parser.parse_args()
     main(args)
     print("All task completed!")
-        
+
