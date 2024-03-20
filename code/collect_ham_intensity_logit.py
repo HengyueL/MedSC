@@ -153,7 +153,7 @@ def get_hampi_loaders(corruption="none", severity=1, bs=128):
     print(next(dl_iter)[0].shape)
     grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
     plt.imshow(grid_img.permute(1, 2, 0))
-    plt.savefig(f"figs/HAMAGE_{corruption}_{severity}.png", dpi=500)
+    plt.savefig(f"figs/HAMPI_{corruption}_{severity}.png", dpi=500)
 
     dls = {'train': trainloader, 'val': valloader, 'test': testloader} 
 
@@ -198,7 +198,7 @@ def main(args):
     corr_name = "clean" if args.corrupt == "none" else args.corrupt
 
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "HAMAGE", name_str, corr_name)
+    log_root = os.path.join(".", "raw_data_collection", "HAMPI", name_str, corr_name)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction
