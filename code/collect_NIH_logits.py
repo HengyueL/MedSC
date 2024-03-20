@@ -6,17 +6,13 @@ from collections import Counter
 from torch.utils.data import DataLoader, Dataset
 import os
 import torchvision
-import cv2
 import torch
 from torchvision import models
 import torch.nn as nn
 from tqdm import tqdm
 from PIL import Image
-from torchvision import transforms
 import matplotlib.pyplot as plt
-from albumentations import Compose, OneOf, Normalize, Resize, RandomResizedCrop, RandomCrop, HorizontalFlip, VerticalFlip, \
-    RandomBrightness, RandomContrast, RandomBrightnessContrast, Rotate, ShiftScaleRotate, Cutout, IAAAdditiveGaussianNoise, Transpose, ToGray
-from albumentations.augmentations.transforms import CLAHE
+from albumentations import Normalize, Resize, HorizontalFlip, Rotate
 from albumentations.pytorch import ToTensorV2
 import albumentations as A
 
