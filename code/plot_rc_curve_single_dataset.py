@@ -44,6 +44,7 @@ def main(args):
 
     # ===  Load In-D collected data ===
     in_d_logits, in_d_labels, fc_weights, fc_bias = read_data(read_root_dir, split="test_set", load_classifier_weight=True)
+    # in_d_logits, in_d_labels, fc_weights, fc_bias = read_data(read_root_dir, split="val_set", load_classifier_weight=True)
     print("Check In-D shapes: ", in_d_logits.shape, in_d_labels.shape)
 
     print("Check In-D shapes: ", in_d_logits.shape, in_d_labels.shape)
@@ -94,7 +95,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--exp_dir", dest="exp_dir", type=str,
-        default="HAM\\ldam\gaussian_blur",
+        default="HAMPI\\ce\clean",
         help="Experiment subfolder where collected data are located."
     )
     args = parser.parse_args()
