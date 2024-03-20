@@ -153,7 +153,8 @@ def get_hampi_loaders(corruption="none", severity=1, bs=128):
     print(next(dl_iter)[0].shape)
     grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
     plt.imshow(grid_img.permute(1, 2, 0))
-    plt.savefig(f"figs/HAMPI_{corruption}_{severity}.png", dpi=500)
+    os.makedirs("debug_figs", exist_ok=True)
+    plt.savefig(f"debug_figs/HAMPI_{corruption}_{severity}.png", dpi=500)
 
     dls = {'train': trainloader, 'val': valloader, 'test': testloader} 
 
