@@ -249,7 +249,7 @@ def plot_rc_curve(total_scores_dict, risk_acc_dict, fig_name, method_name_list, 
         coverage_plot, y_plot = coverage_dict[method_name], y_dict[method_name]
         # x_plot, y_plot = select_RC_curve_points(coverage_plot, y_plot, plot_n_points, min_num_samples)
         x_plot, y_plot = coverage_plot, y_plot
-        y_max, y_min = max(y_plot[0], y_max), min(np.amin(y_plot), y_min)
+        y_max, y_min = max(np.amax(y_plot), y_max), min(np.amin(y_plot), y_min)
         # y_max, y_min = max(np.amax(y_plot), y_max), min(np.amin(y_plot), y_min)
         plot_settings = plot_symbol_dict[method_name]
         ax.plot(

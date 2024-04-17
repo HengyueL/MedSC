@@ -5,10 +5,12 @@ import argparse
 import sys, os
 dir_path = os.path.abspath(".")
 sys.path.append(dir_path)
+dir_path = os.path.abspath("..")
+sys.path.append(dir_path)
 from utils.utils import clear_terminal_output
-from utils.rc_curve_utils import compute_recalls, calculate_score_acc, calculate_score_residual, \
-    plot_rc_curve, plot_sample_percentage_coverage_curve, calculate_score_sample_cls, \
-    plot_recall_coverage_curve
+from utils.rc_curve_binary_utils import calculate_score_acc_binary
+from utils.rc_curve_utils import plot_rc_curve, calculate_score_residual, \
+    calculate_score_sample_cls, plot_sample_percentage_coverage_curve, plot_recall_coverage_curve
 
 
 # GLOBAL VARs
@@ -24,15 +26,16 @@ def read_data(root_dir, split="test_set", load_classifier_weight=False):
     labels = np.load(os.path.join(root_dir, split, "labels.npy"))
     last_layer_weights = None
     last_layer_bias = None
-    if load_classifier_weight:
-        weights_dir = os.path.join(root_dir, "last_layer_weights.npy")
-        if os.path.exists(weights_dir):
-            last_layer_weights = np.load(weights_dir)
-            last_layer_bias = np.load(os.path.join(root_dir, "last_layer_bias.npy"))
+    # if load_classifier_weight:
+    #     weights_dir = os.path.join(root_dir, "last_layer_weights.npy")
+    #     if os.path.exists(weights_dir):
+    #         last_layer_weights = np.load(weights_dir)
+    #         last_layer_bias = np.load(os.path.join(root_dir, "last_layer_bias.npy"))
     return raw_logits, labels, last_layer_weights, last_layer_bias
 
 
 def main(args):
+
     # === Root dir to read collected data ===
     root_dir = args.root_dir
     exp_dir = args.exp_dir
@@ -46,8 +49,10 @@ def main(args):
     in_d_logits, in_d_labels, fc_weights, fc_bias = read_data(read_root_dir, split="test_set", load_classifier_weight=True)
     # in_d_logits, in_d_labels, fc_weights, fc_bias = read_data(read_root_dir, split="val_set", load_classifier_weight=True)
     print("Check In-D shapes: ", in_d_logits.shape, in_d_labels.shape)
+    if len(in_d_labels.shape) > 1:
+        in_d_labels = np.ravel(in_d_labels)
 
-    print("Check In-D shapes: ", in_d_logits.shape, in_d_labels.shape)
+    assert in_d_logits.shape[1] == 2, "binary template needs 2 output logits."
     acc = np.mean(np.argmax(in_d_logits, axis=1) == in_d_labels) * 100
     print("Acc - %.04f" % acc)
     
@@ -57,8 +62,8 @@ def main(args):
     
     save_rc_curve_root = os.path.join(save_root_dir, "rc_curves")
     os.makedirs(save_rc_curve_root, exist_ok=True)
-    # # === Check RC and acc-coverage curve ===
-    acc_scores, acc_list, acc_method_list = calculate_score_acc(in_d_logits, in_d_labels)
+    # # # === Check RC and acc-coverage curve ===
+    acc_scores, acc_list, acc_method_list = calculate_score_acc_binary(in_d_logits, in_d_labels)
     acc_fig_name = os.path.join(save_rc_curve_root, "acc-coverage-curve.png")
     acc_coverage_dict, acc_dict = plot_rc_curve(
         acc_scores, acc_list, acc_fig_name, acc_method_list, PLOT_SYMBOL_DICT, curve_name="acc-coverage"
@@ -71,22 +76,23 @@ def main(args):
         risk_scores, risk_list, risk_fig_name, risk_method_list, PLOT_SYMBOL_DICT, curve_name="risk-coverage"
     )
 
-    # === Plot sample rejection dynamics ===
+    # # === Plot sample rejection dynamics ===
     scores_dict, method_names, labels_list = calculate_score_sample_cls(in_d_logits, in_d_labels)
     fig_path = os.path.join(save_root_dir, "class-wise-sample-rejection")
     os.makedirs(fig_path, exist_ok=True)
     plot_sample_percentage_coverage_curve(scores_dict, method_names, labels_list, fig_path)
 
-    # === Plot recall-coverage curve
-    fig_path = os.path.join(save_root_dir, "recall-coverage")
-    os.makedirs(fig_path, exist_ok=True)
-    plot_recall_coverage_curve(in_d_logits, in_d_labels, fig_path)
+    # # === Plot recall-coverage curve
+    # fig_path = os.path.join(save_root_dir, "recall-coverage")
+    # os.makedirs(fig_path, exist_ok=True)
+    # plot_recall_coverage_curve(in_d_logits, in_d_labels, fig_path)
 
 
 if __name__ == "__main__":
-
+    
     clear_terminal_output()
     print("This script takes into in-D logits and labels and process the RC curve.")
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--root_dir", dest="root_dir", type=str,
@@ -95,10 +101,11 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--exp_dir", dest="exp_dir", type=str,
-        # default="HAMPI\\wce\\clean",
-        default="NLP-NER\\dummy\\dummy",
+        default="NLP-ADE\\dummy\\dummy",
+        # default="MIDRC\\ce\\clean",
         help="Experiment subfolder where collected data are located."
     )
     args = parser.parse_args()
     main(args)
+
     print("All task completed.")
