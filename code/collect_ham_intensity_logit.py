@@ -19,8 +19,6 @@ from tqdm import tqdm
 
 from utils.corruptions import corrupt_image
 
-from utils.corruptions import corrupt_image
-
 
 # === add abs path for import convenience
 import sys, os, argparse, time
@@ -29,8 +27,8 @@ sys.path.append(dir_path)
 from utils.utils import set_seed
 
 
-HAM_TRAIN_CSV_DIR = "/data/datasets/HAM/HAM10000_l70.csv"
-HAM_TEST_CSV_DIR = "/data/datasets/HAM/HAM10000_h70.csv"
+HAM_TRAIN_CSV_DIR = "/panfs/jay/groups/15/jusun/shared/HAM/HAM10000_wpi_l.csv"
+HAM_TEST_CSV_DIR = "/panfs/jay/groups/15/jusun/shared/HAM/HAM10000_wpi_h.csv"
 
 
 def stratfy_sampling(labelList, ratio, return_mask=False):
@@ -69,7 +67,6 @@ class SquarePad(nn.Module):
 
 class HAM_224_dataset(Dataset):
     def __init__(self, pathList: list, labelList: list, mode: str, corruption_type: str="none", severity: int=1) -> None:
-    def __init__(self, pathList: list, labelList: list, mode: str, corruption_type: str="none", severity: int=1) -> None:
         """init function
 
         Args:
@@ -83,8 +80,6 @@ class HAM_224_dataset(Dataset):
         self.pathList = pathList
         self.labelList = labelList
         self.mode = mode
-        self.corruption_type = corruption_type
-        self.severity = severity
         self.corruption_type = corruption_type
         self.severity = severity
         
@@ -112,7 +107,6 @@ class HAM_224_dataset(Dataset):
     def __getitem__(self, idx):
         img = Image.open(self.pathList[idx]).convert("RGB")
         img = corrupt_image(img, self.corruption_type, self.severity)
-        img = corrupt_image(img, self.corruption_type, self.severity)
         img = self.transform[self.mode](image=np.array(img))
         return img['image'], self.labelList[idx]
 
@@ -126,7 +120,7 @@ lesion_to_num = {'nv': 0,
         'df': 6}
 
 
-def get_hamage_loaders(corruption="none", severity=1, bs=128):
+def get_hampi_loaders(corruption="none", severity=1, bs=128):
     df = pd.read_csv(HAM_TRAIN_CSV_DIR)
     df.dx = df.dx.map(lambda x: lesion_to_num[x])
     weights = list(dict(sorted(Counter(df.dx).items(), key=lambda x: x[0])).values())
@@ -159,7 +153,8 @@ def get_hamage_loaders(corruption="none", severity=1, bs=128):
     print(next(dl_iter)[0].shape)
     grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
     plt.imshow(grid_img.permute(1, 2, 0))
-    plt.savefig(f"figs/HAMAGE_{corruption}_{severity}.png", dpi=500)
+    os.makedirs("debug_figs", exist_ok=True)
+    plt.savefig(f"debug_figs/HAMPI_{corruption}_{severity}.png", dpi=500)
 
     dls = {'train': trainloader, 'val': valloader, 'test': testloader} 
 
@@ -204,7 +199,7 @@ def main(args):
     corr_name = "clean" if args.corrupt == "none" else args.corrupt
 
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "HAMAGE", name_str, corr_name)
+    log_root = os.path.join(".", "raw_data_collection", "HAMPI", name_str, corr_name)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction
@@ -238,7 +233,7 @@ def main(args):
     np.save(save_weight_name, weights)
     np.save(save_bias_name, bias)
 
-    dss, stats = get_hamage_loaders(
+    dss, stats = get_hampi_loaders(
         corruption=args.corrupt, severity=args.severity
     )
     
@@ -279,19 +274,10 @@ if __name__ == "__main__":
         help="Corruption severity."
     )
     parser.add_argument(
-        "--corrupt", dest="corrupt", type=str,
-        default="none",
-        help="Corruption type."
-    )
-    parser.add_argument(
-        "--severity", dest="severity", type=int,
-        default=1,
-        help="Corruption severity."
-    )
-    parser.add_argument(
         "--ckpt_dir", dest="ckpt_dir", type=str,
-        default="../../models/HAMAGE/ce/final.pt"
+        default="/panfs/jay/groups/15/jusun/shared/For_HY/models/HAMPI/ce/best.pt"
     )
     args = parser.parse_args()
     main(args)
     print("All task completed!")
+

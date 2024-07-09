@@ -3,21 +3,20 @@ from torchvision import models
 import collections
 from torch.utils.data import DataLoader, Dataset
 import torch.nn as nn
-from torchvision import transforms
 import numpy as np
-from torch.utils.data.sampler import SubsetRandomSampler
 import pandas as pd
 from collections import Counter
 from PIL import Image
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
+import torchvision
 
-from albumentations import ( Compose, OneOf, Normalize, Resize, RandomResizedCrop, RandomCrop, HorizontalFlip, VerticalFlip, 
-    RandomBrightness, RandomContrast, RandomBrightnessContrast, Rotate, ShiftScaleRotate, Cutout, IAAAdditiveGaussianNoise, Transpose, ToGray )
-from albumentations.augmentations.transforms import CLAHE
+from albumentations import Normalize, Resize, RandomCrop
 from albumentations.pytorch import ToTensorV2
 import albumentations as A
-import cv2
 from tqdm import tqdm
+
+from utils.corruptions import corrupt_image
 
 from utils.corruptions import corrupt_image
 
@@ -80,6 +79,8 @@ class HAM_224_dataset(Dataset):
         self.mode = mode
         self.corruption_type = corruption_type
         self.severity = severity
+        self.corruption_type = corruption_type
+        self.severity = severity
         
 
         mean = (0.485, 0.456, 0.406)
@@ -105,19 +106,23 @@ class HAM_224_dataset(Dataset):
     def __getitem__(self, idx):
         img = Image.open(self.pathList[idx]).convert("RGB")
         img = corrupt_image(img, self.corruption_type, self.severity)
+        img = corrupt_image(img, self.corruption_type, self.severity)
         img = self.transform[self.mode](image=np.array(img))
         return img['image'], self.labelList[idx]
 
-lesion_to_num = {'nv': 0,
-        'mel': 1,
-        'bkl': 2,
-        'bcc': 3,
-        'akiec': 4,
-        'vasc': 5,
-        'df': 6}
+
+lesion_to_num = {
+    'nv': 0,
+    'mel': 1,
+    'bkl': 2,
+    'bcc': 3,
+    'akiec': 4,
+    'vasc': 5,
+    'df': 6
+}
 
 
-def get_ham_loaders(bs=128):
+def get_ham_loaders(corrupt="none", severity=1, bs=128):
     df = pd.read_csv(HAM_CSV_DIR)
     df.dx = df.dx.map(lambda x: lesion_to_num[x])
     weights = list(dict(sorted(Counter(df.dx).items(), key=lambda x: x[0])).values())
@@ -131,15 +136,30 @@ def get_ham_loaders(bs=128):
     print(df.shape, df_train.shape, df_test.shape, df_val.shape)
 
 
-    train_ds = HAM_224_dataset(df_train.image_id, df_train.dx, mode='train')
-    val_ds = HAM_224_dataset(df_val.image_id, df_val.dx, mode='val')
-    test_ds = HAM_224_dataset(df_test.image_id, df_test.dx, mode='val')
+    train_ds = HAM_224_dataset(
+        df_train.image_id, df_train.dx, mode='train', corruption_type=corrupt, severity=severity
+    )
+    val_ds = HAM_224_dataset(
+        df_val.image_id, df_val.dx, mode='val', corruption_type=corrupt, severity=severity
+    )
+    test_ds = HAM_224_dataset(
+        df_test.image_id, df_test.dx, mode='val', corruption_type=corrupt, severity=severity
+    )
     dss = {'train': train_ds, 'val': val_ds, 'test': test_ds}
 
     trainloader = DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=4, pin_memory=False)
     valloader = DataLoader(val_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=False)
     testloader = DataLoader(test_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=False)
     
+
+    ## show an visualization
+    dl_iter = iter(testloader)
+    print(next(dl_iter)[0].shape)
+    grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
+    plt.imshow(grid_img.permute(1, 2, 0))
+    os.makedirs("debug_figs", exist_ok=True)
+    plt.savefig(f"debug_figs/HAM_{corrupt}_{severity}.png", dpi=500)
+
     dls = {'train': trainloader, 'val': valloader, 'test': testloader} 
 
     ## get dataset stats
@@ -180,6 +200,10 @@ def collect_logits(model, data_loader, save_res_root, device):
 
 def main(args):
     name_str = args.ckpt_dir.split("/")[-2]
+    if "none" in args.corrupt:
+        corr_name = "clean" 
+    else:
+        corr_name = args.corrupt
 
     # === Create Exp Save Root ===
     log_root = os.path.join("../../", "raw_data_collection", "HAM", "%s" % name_str)
@@ -216,7 +240,7 @@ def main(args):
     np.save(save_weight_name, weights)
     np.save(save_bias_name, bias)
 
-    dss, stats = get_ham_loaders()
+    dss, stats = get_ham_loaders(corrupt=args.corrupt, severity=args.severity)
     
     # === Collect Training Logits === 
     train_loader = dss["train"]
@@ -243,6 +267,16 @@ if __name__ == "__main__":
         "--seed", dest="seed", type=int,
         default=0,
         help="Random seed."
+    )
+    parser.add_argument(
+        "--corrupt", dest="corrupt", type=str,
+        default="none",
+        help="Corruption type."
+    )
+    parser.add_argument(
+        "--severity", dest="severity", type=int,
+        default=1,
+        help="Corruption severity."
     )
     parser.add_argument(
         "--corrupt", dest="corrupt", type=str,

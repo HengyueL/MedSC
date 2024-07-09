@@ -32,7 +32,6 @@ def read_data(root_dir, split="test_set", load_classifier_weight=False):
     return raw_logits, labels, last_layer_weights, last_layer_bias
 
 
-
 def main(args):
     # === Root dir to read collected data ===
     root_dir = args.root_dir
@@ -40,11 +39,12 @@ def main(args):
     read_root_dir = os.path.join(root_dir, exp_dir)
 
     # === Root dir to save processed 
-    save_root_dir = os.path.join("process_rc_data", exp_dir, "in-d")
+    save_root_dir = os.path.join("process_rc_data", exp_dir)
     os.makedirs(save_root_dir, exist_ok=True)
 
     # ===  Load In-D collected data ===
     in_d_logits, in_d_labels, fc_weights, fc_bias = read_data(read_root_dir, split="test_set", load_classifier_weight=True)
+    # in_d_logits, in_d_labels, fc_weights, fc_bias = read_data(read_root_dir, split="val_set", load_classifier_weight=True)
     print("Check In-D shapes: ", in_d_logits.shape, in_d_labels.shape)
 
     print("Check In-D shapes: ", in_d_logits.shape, in_d_labels.shape)
@@ -95,7 +95,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--exp_dir", dest="exp_dir", type=str,
-        default="HAMAGE\\wce",
+        # default="HAMPI\\wce\\clean",
+        default="NLP-NER\\dummy\\dummy",
         help="Experiment subfolder where collected data are located."
     )
     args = parser.parse_args()

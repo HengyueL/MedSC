@@ -6,11 +6,17 @@ from collections import Counter
 from torch.utils.data import DataLoader, Dataset
 import os
 import torchvision
-import cv2
 import torch
 from torchvision import models
 import torch.nn as nn
 from tqdm import tqdm
+from PIL import Image
+import matplotlib.pyplot as plt
+from albumentations import Normalize, Resize, HorizontalFlip, Rotate
+from albumentations.pytorch import ToTensorV2
+import albumentations as A
+
+
 # === add abs path for import convenience
 import sys, os, argparse, time
 dir_path = os.path.abspath(".")
@@ -18,8 +24,10 @@ sys.path.append(dir_path)
 from utils.utils import set_seed
 
 from utils.corruptions import corrupt_image
+from utils.corruptions import corrupt_image
 
 class NIH_224_dataset_fromdf(Dataset):
+    def __init__(self, mode: str, split: str, size: int,  corruption_type: str="none", severity: int=1) -> None:
     def __init__(self, mode: str, split: str, size: int,  corruption_type: str="none", severity: int=1) -> None:
         """init function
 
@@ -41,6 +49,8 @@ class NIH_224_dataset_fromdf(Dataset):
         self.mode = mode
         self.corruption_type = corruption_type
         self.severity = severity
+        self.corruption_type = corruption_type
+        self.severity = severity
         self.label_df = pd.read_csv(os.path.join("/scratch.global/peng0347/nih-crx-lt/LongTailCXR", f'nih-cxr-lt_single-label_{split}.csv'))
 
         self.img_paths = self.label_df['id'].apply(lambda x: os.path.join("/scratch.global/peng0347/nih-crx-lt/images/images", x)).values.tolist()
@@ -51,19 +61,18 @@ class NIH_224_dataset_fromdf(Dataset):
 
         mean = (0.485, 0.456, 0.406)
         std = (0.229, 0.224, 0.225)
-        
         self.transform = {
-            "train": torchvision.transforms.Compose([
-                torchvision.transforms.ToPILImage(),
-                torchvision.transforms.RandomHorizontalFlip(),
-                torchvision.transforms.RandomRotation(15),
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225) )
+            "train": A.Compose([
+                Resize(224, 224),
+                HorizontalFlip(),
+                Rotate(limit=15),
+                Normalize(mean=mean, std=std),
+                ToTensorV2(),
             ]),
-            "val": torchvision.transforms.Compose([
-                torchvision.transforms.ToPILImage(),
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225) )
+            "val": A.Compose([
+                Resize(224, 224),
+                Normalize(mean=mean, std=std),
+                ToTensorV2(),
             ])
         }
     
@@ -91,7 +100,7 @@ def parse_df(df, one_hot=False):
     return path, labels
 
 
-def get_NIH_TL_dataloader(bs=256, size=224):
+def get_NIH_TL_dataloader(corrupt="none", severity=1, bs=256, size=224):
     train_df = pd.read_csv("/scratch.global/peng0347/nih-crx-lt/LongTailCXR/nih-cxr-lt_single-label_train.csv")
     val_df = pd.read_csv("/scratch.global/peng0347/nih-crx-lt/LongTailCXR/nih-cxr-lt_single-label_balanced-val.csv")
     test_df = pd.read_csv("/scratch.global/peng0347/nih-crx-lt/LongTailCXR/nih-cxr-lt_single-label_test.csv")
@@ -106,10 +115,18 @@ def get_NIH_TL_dataloader(bs=256, size=224):
     # val_ds = NIH_224_dataset(val_path, val_labels, mode='val')
     # test_ds = NIH_224_dataset(test_path, test_labels, mode='val')
     
-    train_ds = NIH_224_dataset_fromdf(mode='train', split="train", size=size)
-    val_ds = NIH_224_dataset_fromdf(mode='val', split="balanced-val", size=size)
-    test_ds = NIH_224_dataset_fromdf(mode='val', split='test', size=size)
-    btest_ds = NIH_224_dataset_fromdf(mode='val', split='balanced-test', size=size)
+    train_ds = NIH_224_dataset_fromdf(
+        mode='train', split="train", size=size, corruption_type=corrupt, severity=severity
+    )
+    val_ds = NIH_224_dataset_fromdf(
+        mode='val', split="balanced-val", size=size, corruption_type=corrupt, severity=severity
+    )
+    test_ds = NIH_224_dataset_fromdf(
+        mode='val', split='test', size=size, corruption_type=corrupt, severity=severity
+    )
+    btest_ds = NIH_224_dataset_fromdf(
+        mode='val', split='balanced-test', size=size, corruption_type=corrupt, severity=severity
+    )
     # dss = {'train': train_ds, 'val': val_ds, 'test': test_ds}
 
     trainloader = DataLoader(train_ds, batch_size=bs, shuffle=True, num_workers=4, pin_memory=True)
@@ -117,6 +134,14 @@ def get_NIH_TL_dataloader(bs=256, size=224):
     testloader = DataLoader(test_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=True)
     btestloader = DataLoader(btest_ds, batch_size=bs, shuffle=False, num_workers=4, pin_memory=True)
     
+    ## show an visualization
+    dl_iter = iter(testloader)
+    print(next(dl_iter)[0].shape)
+    grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
+    plt.imshow(grid_img.permute(1, 2, 0))
+    os.makedirs("debug_figs", exist_ok=True)
+    plt.savefig(f"debug_figs/NIH_{corrupt}_{severity}.png", dpi=500)
+
     dls = {'train': trainloader, 'val': valloader, 'test': testloader, 'btest': btestloader} 
 
     ## get dataset stats
@@ -159,9 +184,9 @@ def collect_logits(model, data_loader, save_res_root, device):
 
 def main(args):
     ckpt_name = args.ckpt_file.split("_")[0]
-
+    corr_name = "clean" if args.corrupt == "none" else args.corrupt
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "NIH", ckpt_name)
+    log_root = os.path.join(".", "raw_data_collection", "NIH", ckpt_name, corr_name)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction
@@ -177,7 +202,6 @@ def main(args):
     model.to(device)
     model.eval()
 
-
     # === Collect Model fc weights and bias ===
     last_layer = model.fc
     weights = last_layer.weight.data.clone().cpu().numpy()
@@ -191,7 +215,10 @@ def main(args):
     np.save(save_weight_name, weights)
     np.save(save_bias_name, bias)
 
-    dss, stats = get_NIH_TL_dataloader()
+    dss, stats = get_NIH_TL_dataloader(
+        corrupt=args.corrupt,
+        severity=args.severity
+    )
 
     # === Collect Training Logits === 
     train_loader = dss["train"]
@@ -230,8 +257,18 @@ if __name__ == "__main__":
         help="Corruption severity."
     )
     parser.add_argument(
+        "--corrupt", dest="corrupt", type=str,
+        default="none",
+        help="Corruption type."
+    )
+    parser.add_argument(
+        "--severity", dest="severity", type=int,
+        default=1,
+        help="Corruption severity."
+    )
+    parser.add_argument(
         "--ckpt_root_dir", dest="ckpt_dir", type=str,
-        default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval/models/NIH/"
+        default="/panfs/jay/groups/15/jusun/shared/For_HY/models/NIH/"
     )
     parser.add_argument(
         "--ckpt_file", dest="ckpt_file", type=str, default="decoupling-cRT_nih.pt"

@@ -19,8 +19,6 @@ from tqdm import tqdm
 
 from utils.corruptions import corrupt_image
 
-from utils.corruptions import corrupt_image
-
 
 # === add abs path for import convenience
 import sys, os, argparse, time
@@ -29,8 +27,8 @@ sys.path.append(dir_path)
 from utils.utils import set_seed
 
 
-HAM_TRAIN_CSV_DIR = "/data/datasets/HAM/HAM10000_l70.csv"
-HAM_TEST_CSV_DIR = "/data/datasets/HAM/HAM10000_h70.csv"
+MIDRC_TRAIN_CSV_DIR = "/scratch.global/peng0347/MIDRC/race_train.csv"
+MIDRC_TEST_CSV_DIR = "/scratch.global/peng0347/MIDRC/race_test.csv"
 
 
 def stratfy_sampling(labelList, ratio, return_mask=False):
@@ -67,8 +65,7 @@ class SquarePad(nn.Module):
         return F.pad(image, padding, 0, 'constant')
     
 
-class HAM_224_dataset(Dataset):
-    def __init__(self, pathList: list, labelList: list, mode: str, corruption_type: str="none", severity: int=1) -> None:
+class MIDRC_224_dataset(Dataset):
     def __init__(self, pathList: list, labelList: list, mode: str, corruption_type: str="none", severity: int=1) -> None:
         """init function
 
@@ -77,14 +74,12 @@ class HAM_224_dataset(Dataset):
             labelList (list): list of labels
             mode (str): dataset type 'train' or 'val'
         """
-        super(HAM_224_dataset, self).__init__()
+        super(MIDRC_224_dataset, self).__init__()
         assert mode in {"train", "val"}
         
         self.pathList = pathList
         self.labelList = labelList
         self.mode = mode
-        self.corruption_type = corruption_type
-        self.severity = severity
         self.corruption_type = corruption_type
         self.severity = severity
         
@@ -112,41 +107,34 @@ class HAM_224_dataset(Dataset):
     def __getitem__(self, idx):
         img = Image.open(self.pathList[idx]).convert("RGB")
         img = corrupt_image(img, self.corruption_type, self.severity)
-        img = corrupt_image(img, self.corruption_type, self.severity)
         img = self.transform[self.mode](image=np.array(img))
         return img['image'], self.labelList[idx]
 
 
-lesion_to_num = {'nv': 0,
-        'mel': 1,
-        'bkl': 2,
-        'bcc': 3,
-        'akiec': 4,
-        'vasc': 5,
-        'df': 6}
+label_to_num = {'No': 0, 'Yes': 1}
 
 
-def get_hamage_loaders(corruption="none", severity=1, bs=128):
-    df = pd.read_csv(HAM_TRAIN_CSV_DIR)
-    df.dx = df.dx.map(lambda x: lesion_to_num[x])
-    weights = list(dict(sorted(Counter(df.dx).items(), key=lambda x: x[0])).values())
-    idx_train, idx_tmp = stratfy_sampling(df.dx, ratio=0.2)
+def get_midrc_loaders(corruption="none", severity=1, bs=128):
+    df = pd.read_csv(MIDRC_TRAIN_CSV_DIR)
+    df.label = df.label.map(lambda x: label_to_num[x])
+    weights = list(dict(sorted(Counter(df.label).items(), key=lambda x: x[0])).values())
+    idx_train, idx_tmp = stratfy_sampling(df.label, ratio=0.2)
     df_val = df.iloc[idx_tmp, :].reset_index(drop=True)
     df_train = df.iloc[idx_train].reset_index(drop=True)
 
-    df_test = pd.read_csv(HAM_TEST_CSV_DIR)
-    df_test.dx = df_test.dx.map(lambda x: lesion_to_num[x])
+    df_test = pd.read_csv(MIDRC_TEST_CSV_DIR)
+    df_test.label = df_test.label.map(lambda x: label_to_num[x])
     print(df.shape, df_train.shape, df_test.shape, df_val.shape)
 
 
-    train_ds = HAM_224_dataset(
-        df_train.image_id, df_train.dx, mode='train', corruption_type=corruption, severity=severity
+    train_ds = MIDRC_224_dataset(
+        df_train.filename, df_train.label, mode='train', corruption_type=corruption, severity=severity
     )
-    val_ds = HAM_224_dataset(
-        df_val.image_id, df_val.dx, mode='val', corruption_type=corruption, severity=severity
+    val_ds = MIDRC_224_dataset(
+        df_val.filename, df_val.label, mode='val', corruption_type=corruption, severity=severity
     )
-    test_ds = HAM_224_dataset(
-        df_test.image_id, df_test.dx, mode='val', corruption_type=corruption, severity=severity
+    test_ds = MIDRC_224_dataset(
+        df_test.filename, df_test.label, mode='val', corruption_type=corruption, severity=severity
     )
     dss = {'train': train_ds, 'val': val_ds, 'test': test_ds}
 
@@ -159,7 +147,7 @@ def get_hamage_loaders(corruption="none", severity=1, bs=128):
     print(next(dl_iter)[0].shape)
     grid_img = torchvision.utils.make_grid(next(dl_iter)[0][:16], nrow=4)
     plt.imshow(grid_img.permute(1, 2, 0))
-    plt.savefig(f"figs/HAMAGE_{corruption}_{severity}.png", dpi=500)
+    plt.savefig(f"figs/MIDRC_{corruption}_{severity}.png", dpi=500)
 
     dls = {'train': trainloader, 'val': valloader, 'test': testloader} 
 
@@ -169,7 +157,7 @@ def get_hamage_loaders(corruption="none", severity=1, bs=128):
         stats.update({
             stage: {
                 "size": tmp_df.shape[0],
-                "label distribution": dict(Counter(tmp_df.dx).most_common())
+                "label distribution": dict(Counter(tmp_df.label).most_common())
             }
         })
     return dls, stats
@@ -204,14 +192,14 @@ def main(args):
     corr_name = "clean" if args.corrupt == "none" else args.corrupt
 
     # === Create Exp Save Root ===
-    log_root = os.path.join(".", "raw_data_collection", "HAMAGE", name_str, corr_name)
+    log_root = os.path.join(".", "raw_data_collection", "MIDRC", name_str, corr_name)
     os.makedirs(log_root, exist_ok=True)
 
     set_seed(args.seed) # important! For reproduction
     device = torch.device("cuda")
     
     # Prepare Pretrained Model
-    num_classes = 7
+    num_classes = 2
     model = models.resnet50()
     backbone = nn.Sequential(*list(model.children())[:-1], nn.Flatten())
     model = torch.nn.Sequential(
@@ -238,7 +226,7 @@ def main(args):
     np.save(save_weight_name, weights)
     np.save(save_bias_name, bias)
 
-    dss, stats = get_hamage_loaders(
+    dss, stats = get_midrc_loaders(
         corruption=args.corrupt, severity=args.severity
     )
     
@@ -279,19 +267,10 @@ if __name__ == "__main__":
         help="Corruption severity."
     )
     parser.add_argument(
-        "--corrupt", dest="corrupt", type=str,
-        default="none",
-        help="Corruption type."
-    )
-    parser.add_argument(
-        "--severity", dest="severity", type=int,
-        default=1,
-        help="Corruption severity."
-    )
-    parser.add_argument(
         "--ckpt_dir", dest="ckpt_dir", type=str,
-        default="../../models/HAMAGE/ce/final.pt"
+        default="/panfs/jay/groups/15/jusun/shared/For_HY/models/MIDRC/ce/final.pt"
     )
     args = parser.parse_args()
     main(args)
     print("All task completed!")
+

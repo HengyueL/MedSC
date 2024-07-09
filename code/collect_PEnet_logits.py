@@ -118,7 +118,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--ckpt_dir", dest="ckpt_dir", type=str,
-        default="/panfs/jay/groups/15/jusun/shared/For_HY/SC_eval/models/PE/best.pth.tar"
+        default="/panfs/jay/groups/15/jusun/shared/For_HY/models/PE/best.pth.tar"
     )
     args = parser.parse_args()
     set_seed(args.seed)

@@ -3,6 +3,8 @@
 import numpy as np
 from PIL import Image
 
+# /////////////// Corruption Helpers ///////////////
+
 import skimage as sk
 from skimage.filters import gaussian
 from io import BytesIO
@@ -149,22 +151,11 @@ def speckle_noise(x, severity=1):
     return np.clip(x + x * np.random.normal(size=x.shape, scale=c), 0, 1) * 255
 
 
-def fgsm(x, source_net, severity=1):
-    c = [8, 16, 32, 64, 128][severity - 1]
-
-    x = V(x, requires_grad=True)
-    logits = source_net(x)
-    source_net.zero_grad()
-    loss = F.cross_entropy(logits, V(logits.data.max(1)[1].squeeze_()), size_average=False)
-    loss.backward()
-
-    return standardize(torch.clamp(unstandardize(x.data) + c / 255. * unstandardize(torch.sign(x.grad.data)), 0, 1))
-
-
 def gaussian_blur(x, severity=1):
     c = [1, 2, 3, 4, 6][severity - 1]
 
-    x = gaussian(np.array(x) / 255., sigma=c, multichannel=True)
+    # x = gaussian(np.array(x) / 255., sigma=c, multichannel=True)
+    x = gaussian(np.array(x) / 255., sigma=c, channel_axis=2)
     return np.clip(x, 0, 1) * 255
 
 
@@ -172,7 +163,8 @@ def glass_blur(x, severity=1):
     # sigma, max_delta, iterations
     c = [(0.7, 1, 2), (0.9, 2, 1), (1, 2, 3), (1.1, 3, 2), (1.5, 4, 2)][severity - 1]
 
-    x = np.uint8(gaussian(np.array(x) / 255., sigma=c[0], multichannel=True) * 255)
+    # x = np.uint8(gaussian(np.array(x) / 255., sigma=c[0], multichannel=True) * 255)
+    x = np.uint8(gaussian(np.array(x) / 255., sigma=c[0]) * 255)
 
     # locally shuffle pixels
     for i in range(c[2]):
@@ -183,7 +175,8 @@ def glass_blur(x, severity=1):
                 # swap
                 x[h, w], x[h_prime, w_prime] = x[h_prime, w_prime], x[h, w]
 
-    return np.clip(gaussian(x / 255., sigma=c[0], multichannel=True), 0, 1) * 255
+    # return np.clip(gaussian(x / 255., sigma=c[0], multichannel=True), 0, 1) * 255
+    return np.clip(gaussian(x / 255., sigma=c[0], channel_axis=2), 0, 1,) * 255
 
 
 def defocus_blur(x, severity=1):
@@ -442,8 +435,9 @@ def elastic_transform(image, severity=1):
 
 
 def corrupt_image(img, corruption_type, severity):
+    #print("Use corruption: ", corruption_type , severity)
     if corruption_type == "none":
-        corrupt_image = img
+        corrupted_img = img
     elif corruption_type == "gaussian_blur":
         corrupted_img = gaussian_blur(img, severity)
     elif corruption_type == "jpeg_compression":
@@ -453,6 +447,7 @@ def corrupt_image(img, corruption_type, severity):
     elif corruption_type == "motion_blur":
         corrupted_img = motion_blur(img, severity)
     else:
-        exit(f"No implementation for the corruption type: {currption_type}")
-    return corrupt_image
+        exit(f"No implementation for the corruption type: {corruption_type}")
+    # print(img.size, corrupted_img.size)
+    return corrupted_img
     
